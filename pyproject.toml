@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pynetro"
+version = "0.1.0"
+description = "Async Python wrapper for Netro API (HTTP-agnostic, HA-friendly)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{ name = "kcofoni", email = "kcofoni@gmail.com" }]
+keywords = ["netro", "irrigation", "asyncio", "home-assistant", "api"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Framework :: AsyncIO",
+  "License :: OSI Approved :: MIT License"
+]
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
