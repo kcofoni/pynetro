@@ -24,3 +24,37 @@ where = ["src"]
 
 [tool.ruff]
 line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+# Sélection de règles de qualité importantes mais équilibrées
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade (modernisation du code)
+    "D",    # pydocstyle (docstrings)
+    "TRY",  # tryceratops (gestion d'erreurs)
+    "EM",   # flake8-errmsg
+    "RUF",  # Ruff-specific rules
+]
+
+# Ignore certaines règles trop strictes pour commencer
+ignore = [
+    "D203",  # 1 blank line required before class docstring (conflicte avec D211)
+    "D213",  # Multi-line docstring summary should start at the second line (conflicte avec D212)
+    "TRY003", # Avoid specifying long messages outside the exception class (à corriger progressivement)
+    "EM101", # Exception must not use a string literal (à corriger progressivement)
+    "PIE790", # Unnecessary ellipsis constant (approprié dans les Protocols)
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"  # Style Google pour les docstrings
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pylint."messages control"]
+disable = "unnecessary-ellipsis"  # W2301 - Approprié dans les Protocols
