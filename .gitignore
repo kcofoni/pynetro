@@ -6,3 +6,14 @@ build/
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
+
+# Fichiers temporaires de test contenant des données sensibles
+*_response_sample.json
+netro_api_*.json
+
+# Fichiers d'environnement (contiennent des données sensibles)
+.env
+
+# Rapports de couverture générés
+htmlcov/
+.coverage

@@ -74,30 +74,56 @@ class NetroClient:
 
     async def _handle(self, resp: AsyncHTTPResponse) -> dict[str, Any]:
         """Handle HTTP + NPA JSON envelope."""
-        if resp.status in (401, 403):
-            try:
-                resp.raise_for_status()
-            except Exception as e:
-                raise NetroAuthError(str(e)) from e
-            raise NetroAuthError("Authentication failed")
-        resp.raise_for_status()
-        data = await resp.json()
-        # La NPA renvoie un enveloppe {"status": "OK"/"ERROR", "data": {...}, "meta": {...}}
+        # D'abord, essayons de lire le JSON pour voir si c'est une erreur métier Netro
+        try:
+            data = await resp.json()
+        except Exception as exc:
+            # Si on ne peut pas lire le JSON, c'est probablement une vraie erreur HTTP
+            if resp.status in (401, 403):
+                msg = f"HTTP {resp.status}: Authentication failed"
+                raise NetroAuthError(msg) from exc
+            resp.raise_for_status()  # Lève l'exception HTTP appropriée
+            msg = f"HTTP {resp.status}: Unable to parse JSON response"
+            raise NetroError(msg) from exc
+
+        # La NPA renvoie une enveloppe {"status": "OK"/"ERROR", "data": {...}, "meta": {...}}
         status = data.get("status")
-        if status and status != "OK":
-            # essaie d'extraire un message utile
+
+        if status == "OK":
+            # Tout va bien, retourner la réponse complète
+            return data
+        elif status == "ERROR":
+            # Erreur métier Netro, analyser les détails
             errs = data.get("errors") or []
-            msg = (
-                "; ".join(
-                    f"{e.get('code')}: {e.get('message')}" for e in errs if isinstance(errs, list)
-                )
-                or "API ERROR"
-            )
-            # Certaines erreurs auth ne passent pas par 401/403 → mappe si évident
-            if "auth" in msg.lower() or "invalid key" in msg.lower():
+            if isinstance(errs, list) and errs:
+                # Construire le message d'erreur à partir des erreurs
+                messages = []
+                for err in errs:
+                    if isinstance(err, dict):
+                        code = err.get("code", "")
+                        message = err.get("message", "")
+                        if code and message:
+                            messages.append(f"{code}: {message}")
+                        elif message:
+                            messages.append(message)
+
+                error_msg = "; ".join(messages) if messages else "API ERROR"
+
+                # Détecter les erreurs d'authentification
+                if any("invalid key" in msg.lower() for msg in messages):
+                    raise NetroAuthError(error_msg)
+                else:
+                    raise NetroError(error_msg)
+            else:
+                raise NetroError("API returned ERROR status without details")
+        else:
+            # Status inattendu ou manquant
+            if resp.status in (401, 403):
+                msg = f"HTTP {resp.status}: Authentication failed"
                 raise NetroAuthError(msg)
+            resp.raise_for_status()  # Pour les autres codes d'erreur HTTP
+            msg = f"Unexpected API response status: {status}"
             raise NetroError(msg)
-        return data  # on retourne l'enveloppe complète (data/meta utiles au caller)
 
     # ---------- Device APIs ----------
     # GET /npa/v1/info.json?key=ABCDEFG

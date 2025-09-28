@@ -1,0 +1,5 @@
+# Ignore generated reference files containing sensitive data
+*.json
+
+# Keep only the README for documentation
+!README.md
