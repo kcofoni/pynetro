@@ -1,6 +1,56 @@
 # Tests for PyNetro
 
-This folder contains the complete test suite for PyNetro with 14 tests (5 unit + 9 integration).
+This folder contains the complete test suite for PyNetro with 16 tests (7 unit + 9 integration).
+
+## 🏠 Netro Device Types
+
+PyNetro supports three ty**💡 Tip**: Use `-s` when developing tests or debugging API responses to see all validation messages in real-time!
+
+## 📁 Reference Data Files
+
+The `tests/reference_data/` directory contains API response templates and real device data:
+
+### 📋 **Template Files** (committed to git)
+- `sensor_response_template.json` - Anonymized sensor structure  
+- `sprite_response_template.json` - Anonymized Sprite controller structure
+- `pixie_response_template.json` - Anonymized Pixie controller structure
+
+### 🔒 **Real Data Files** (ignored by git for security)
+- `sensor_response.json` - Your actual sensor data with real serial numbers
+- `sprite_response.json` - Your actual Sprite controller data with real serial numbers
+
+### 🔄 **Generating Real Reference Files**
+
+```bash
+# Set your device serial numbers
+export NETRO_SENS_SERIAL="your_sensor_serial" 
+export NETRO_CTRL_SERIAL="your_controller_serial"
+
+# Generate reference files (automatically ignored by git)
+python tests/generate_references.py
+```
+
+**Note**: Real reference files contain your actual device serial numbers and are automatically excluded from git for security.
+
+## 📊 Coverage Reports of Netro devices with distinct characteristics:
+
+### 🔋 **Sensor** 
+- **Power**: Battery-powered  
+- **Purpose**: Soil moisture and environmental monitoring
+- **API Structure**: `{"data": {"sensor": {...}}}`
+- **Key Fields**: `battery_level`, no zones
+
+### 🎮 **Sprite Controller** 
+- **Power**: AC-powered (plugged into wall)
+- **Purpose**: Multi-zone irrigation control  
+- **API Structure**: `{"data": {"device": {...}}}`
+- **Key Fields**: `zone_num` > 1, `zones[]` array, no `battery_level`
+
+### 🔌 **Pixie Controller**
+- **Power**: Battery-powered (portable)
+- **Purpose**: Single-zone irrigation control
+- **API Structure**: `{"data": {"device": {...}}}`  
+- **Key Fields**: `zone_num` = 1, `zones[]` with 1 element, `battery_level`
 
 ## 🔒 Security
 
@@ -185,26 +235,32 @@ tests/
 ├── test_integration.py          # 9 integration tests with real HTTP
 ├── aiohttp_client.py           # HTTP client for integration tests
 ├── generate_references.py      # Tool to capture API responses
-└── reference_data/             # Captured API responses
+└── reference_data/             # API response templates and real data
     ├── README.md
-    ├── sensor_info_response.json
-    └── controller_info_response.json
+    ├── sensor_response_template.json      # Anonymized sensor structure
+    ├── sprite_response_template.json      # Anonymized Sprite controller
+    ├── pixie_response_template.json       # Anonymized Pixie controller
+    ├── sensor_response.json               # Real sensor data (git ignored)
+    └── sprite_response.json               # Real Sprite data (git ignored)
 ```
 
 ## 🔍 Test Details
 
-### Unit Tests (5 tests) - `test_client.py`
+### Unit Tests (7 tests) - `test_client.py`
 - **Always run** (no external dependencies)
 - Use **MockHTTPClient** and **MockHTTPResponse** 
 - Test **Protocol compliance** and **error handling**
 - **100% predictable** results
+- **Device-specific** tests using real API structure templates
 
 **Tests included:**
-1. `test_get_info_success` - Successful API response
-2. `test_get_info_http_error` - HTTP error handling
-3. `test_get_info_json_error` - Invalid JSON handling
-4. `test_get_info_missing_key` - Missing response keys
-5. `test_get_info_unexpected_error` - Unexpected exceptions
+1. `test_get_sprite_info_success` - Sprite controller (AC-powered, multi-zone)
+2. `test_get_pixie_info_success` - Pixie controller (battery-powered, single-zone)
+3. `test_get_sens_info_success` - Sensor device (battery-powered)
+4. `test_get_info_api_error` - API error handling
+5. `test_get_info_http_401` - HTTP 401 authentication errors
+6. `test_get_info_generic_api_error` - Generic API errors
+7. `test_get_info_custom_config` - Custom configuration testing
 
 ### Integration Tests (9 tests) - `test_integration.py`
 - **Require environment variables** (auto-skipped if missing)
@@ -213,15 +269,15 @@ tests/
 - **Results depend on device state**
 
 **Tests included:**
-1. `test_get_info_sensor_success` - Sensor device info
-2. `test_get_info_controller_success` - Controller device info  
-3. `test_get_info_different_serials` - Different device types
-4. `test_get_info_network_conditions` - Network reliability
-5. `test_get_info_response_structure` - API response validation
-6. `test_multiple_requests_consistency` - Multiple calls
-7. `test_error_handling_invalid_serial` - Invalid device serial
-8. `test_concurrent_requests` - Concurrent API calls
-9. `test_environment_variable_security` - Security validation
+1. `test_get_info_sensor_device` - Sensor device validation against reference
+2. `test_get_info_controller_device` - Controller device validation against reference
+3. `test_compare_sensor_vs_controller_structure` - Structural differences validation
+4. `test_get_info_real_api_success` - Real API success scenarios
+5. `test_get_info_real_api_structure_validation` - Structure conformance
+6. `test_get_info_invalid_key` - Invalid key error handling
+7. `test_get_info_response_time` - Performance validation
+8. `test_get_info_with_custom_config` - Custom configuration testing
+9. `test_explore_api_response_structure` - API structure exploration
 
 ## 🚀 Quick Commands
 
