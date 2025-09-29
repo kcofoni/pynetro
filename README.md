@@ -114,7 +114,7 @@ echo $NETRO_SENS_SERIAL $NETRO_CTRL_SERIAL
 
 ### Tests
 
-The project has a comprehensive test suite with 14 tests (5 unit + 9 integration).
+The project has a comprehensive test suite with 14 tests (7 unit + 7 integration).
 
 ```bash
 # Run all tests

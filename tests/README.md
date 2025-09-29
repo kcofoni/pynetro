@@ -1,6 +1,6 @@
 # Tests for PyNetro
 
-This folder contains the complete test suite for PyNetro with 16 tests (7 unit + 9 integration).
+This folder contains the complete test suite for PyNetro with 15 tests (7 unit + 8 integration).
 
 ## 🏠 Netro Device Types
 
@@ -262,7 +262,7 @@ tests/
 6. `test_get_info_generic_api_error` - Generic API errors
 7. `test_get_info_custom_config` - Custom configuration testing
 
-### Integration Tests (9 tests) - `test_integration.py`
+### Integration Tests (7 tests) - `test_integration.py`
 - **Require environment variables** (auto-skipped if missing)
 - Use **real aiohttp client** against **live Netro API**
 - Test **actual device responses** and **network conditions**
@@ -272,12 +272,10 @@ tests/
 1. `test_get_info_sensor_device` - Sensor device validation against reference
 2. `test_get_info_controller_device` - Controller device validation against reference
 3. `test_compare_sensor_vs_controller_structure` - Structural differences validation
-4. `test_get_info_real_api_success` - Real API success scenarios
-5. `test_get_info_real_api_structure_validation` - Structure conformance
-6. `test_get_info_invalid_key` - Invalid key error handling
-7. `test_get_info_response_time` - Performance validation
-8. `test_get_info_with_custom_config` - Custom configuration testing
-9. `test_explore_api_response_structure` - API structure exploration
+4. `test_get_info_invalid_key` - Invalid key error handling
+5. `test_get_info_response_time` - Performance validation
+6. `test_get_info_with_custom_config` - Custom configuration testing
+7. `test_explore_api_response_structure` - API structure exploration
 
 ## 🚀 Quick Commands
 

@@ -62,7 +62,7 @@ class AiohttpClient:
         if not self._session:
             raise RuntimeError("Session not initialized. Use 'async with' context manager.")
 
-        # Adapter les paramètres pour aiohttp
+        # Adapt parameters for aiohttp
         aiohttp_kwargs = self._adapt_kwargs(kwargs)
         response = self._session.get(url, **aiohttp_kwargs)
         return AiohttpResponseContextManager(response)

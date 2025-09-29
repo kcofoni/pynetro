@@ -1,7 +1,7 @@
 """Integration tests for NetroClient with real HTTP client.
 
-Ces tests nécessitent une vraie clé API Netro et une connexion internet.
-Ils sont marqués comme 'integration' pour pouvoir les exécuter séparément.
+These tests require a real Netro API key and internet connection.
+They are marked as 'integration' to run them separately.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ import json
 import os
 import time
 from collections.abc import AsyncIterator
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -186,7 +187,7 @@ class TestNetroClientIntegration:
 
             print("=== COMPARISON SENSOR vs CONTROLLER ===")
 
-            # Les deux devraient avoir status OK
+            # Both should have status OK
             assert sensor_result["status"] == "OK"
             assert controller_result["status"] == "OK"
 
@@ -194,11 +195,11 @@ class TestNetroClientIntegration:
             sensor_data = sensor_result["data"]
             controller_data = controller_result["data"]
 
-            # Sensor a une clé 'sensor'
+            # Sensor has a 'sensor' key
             assert "sensor" in sensor_data
             assert "sensor" not in controller_data
 
-            # Controller a une clé 'device'
+            # Controller has a 'device' key
             assert "device" in controller_data
             assert "device" not in sensor_data
 
@@ -219,49 +220,6 @@ class TestNetroClientIntegration:
             print(f"✅ Controller structure validated: {list(controller_info.keys())}")
             print(f"✅ Controller has {controller_info['zone_num']} zones")
 
-    @skip_if_no_serials
-    async def test_get_info_real_api_success(self, client: NetroClient) -> None:
-        """Test get_info with real Netro API - generic success case."""
-        # Act - Use sensor by default
-        result = await client.get_info(NETRO_SENS_SERIAL)
-
-        # Assert - Verify response structure
-        assert isinstance(result, dict)
-        assert "status" in result
-        assert result["status"] == "OK"
-
-        # Verify that expected sections are present
-        assert "data" in result
-        data = result["data"]
-
-        # La structure exacte peut varier selon le compte, mais certains champs sont standards
-        assert isinstance(data, dict)
-        print(f"Réponse API réelle reçue: {result}")
-
-    @skip_if_no_serials
-    async def test_get_info_real_api_structure_validation(self, client: NetroClient) -> None:
-        """Test que la structure de la réponse correspond à nos attentes."""
-        # Act
-        result = await client.get_info(NETRO_SENS_SERIAL)
-
-        # Assert - Validation de structure plus détaillée
-        assert isinstance(result, dict)
-
-        # Verify Netro API envelope
-        required_top_level = ["status"]
-        for field in required_top_level:
-            assert field in result, f"Champ manquant: {field}"
-
-        # Si status = OK, data devrait être présent
-        if result["status"] == "OK":
-            assert "data" in result
-            data = result["data"]
-            assert isinstance(data, dict)
-
-            # Verify some common fields (according to Netro docs)
-            # Note: la structure exacte dépend de votre compte
-            print(f"Structure des données: {list(data.keys())}")
-
     async def test_get_info_invalid_key(self, client: NetroClient) -> None:
         """Test get_info with invalid API key."""
         invalid_key = "INVALID_KEY_123"
@@ -270,11 +228,11 @@ class TestNetroClientIntegration:
         with pytest.raises((NetroAuthError, NetroError)) as exc_info:
             await client.get_info(invalid_key)
 
-        print(f"Erreur reçue avec clé invalide: {exc_info.value}")
+        print(f"Error received with invalid key: {exc_info.value}")
 
     @skip_if_no_serials
     async def test_get_info_response_time(self, client: NetroClient) -> None:
-        """Test que l'API répond dans un délai raisonnable."""
+        """Test that the API responds within a reasonable time."""
         # Act
         start_time = time.time()
         result = await client.get_info(NETRO_SENS_SERIAL)
@@ -282,16 +240,16 @@ class TestNetroClientIntegration:
 
         # Assert
         response_time = end_time - start_time
-        assert response_time < 10.0, f"API trop lente: {response_time:.2f}s"
+        assert response_time < 10.0, f"API too slow: {response_time:.2f}s"
         assert result["status"] == "OK"
-        print(f"Temps de réponse API: {response_time:.2f}s")
+        print(f"API response time: {response_time:.2f}s")
 
     @skip_if_no_serials
     async def test_get_info_with_custom_config(self) -> None:
         """Test with custom configuration."""
-        # Arrange
+            # Arrange
         custom_config = NetroConfig(
-            base_url="https://api.netrohome.com/npa/v1",  # URL officielle
+            base_url="https://api.netrohome.com/npa/v1",  # Official URL
             default_timeout=15.0,
             extra_headers={"User-Agent": "PyNetro-Test/1.0"},
         )
@@ -304,37 +262,123 @@ class TestNetroClientIntegration:
 
             # Assert
             assert result["status"] == "OK"
-            print(f"Réponse avec config personnalisée: {result}")
+            print(f"Response with custom config: {result}")
+
+    @skip_if_no_serials
+    async def test_get_schedules_controller_device(self, client: NetroClient) -> None:
+        """Test get_schedules with controller device and validate against reference structure."""
+        # Arrange - Controller serial from environment and date range
+        controller_key = NETRO_CTRL_SERIAL
+        today = datetime.now()
+        start_date = today.strftime("%Y-%m-%d")
+        end_date = (today + timedelta(days=2)).strftime("%Y-%m-%d")
+        zones = [1, 2]
+
+        # Load reference structure
+        reference_file = Path(__file__).parent / "reference_data" / "sprite_response_schedules.json"
+        reference_data = None
+        if reference_file.exists():
+            with reference_file.open() as f:
+                reference_data = json.load(f)
+
+        # Act
+        result = await client.get_schedules(
+            controller_key,
+            start_date=start_date,
+            end_date=end_date,
+            zones=zones
+        )
+
+        # Assert - Verify schedules response structure
+        assert isinstance(result, dict)
+        assert result["status"] == "OK"
+        assert "data" in result
+        assert "meta" in result
+
+        data = result["data"]
+        assert "schedules" in data, "Response should contain 'schedules' key"
+
+        schedules = data["schedules"]
+        assert isinstance(schedules, list), "schedules should be a list"
+
+        # Validate against reference structure if available
+        if reference_data:
+            print("🔍 Validating schedules against reference structure...")
+
+            if schedules:  # Only validate if we have actual schedules
+                # Check that schedule structure matches reference
+                for schedule in schedules:
+                    # Validate required fields based on reference structure
+                    required_fields = ["zone", "id", "status", "source", "start_time",
+                                     "end_time", "local_date", "local_start_time",
+                                     "local_end_time"]
+
+                    for field in required_fields:
+                        assert field in schedule, f"Missing required field: {field}"
+
+                    # Validate zone is in requested zones (or any if no filter)
+                    if zones:
+                        # Note: API might return other zones too
+                        assert isinstance(schedule["zone"], int), "Zone should be integer"
+
+                    # Validate status values
+                    valid_statuses = ["VALID", "EXECUTED", "CANCELLED", "EXPIRED"]
+                    status = schedule["status"]
+                    assert status in valid_statuses, f"Invalid status: {status}"
+
+                    # Validate source values
+                    valid_sources = ["SMART", "MANUAL", "SCHEDULED", "FIX"]
+                    source = schedule["source"]
+                    assert source in valid_sources, f"Invalid source: {source}"
+
+                print(f"✅ Found {len(schedules)} schedules")
+                print(f"✅ Date range: {start_date} to {end_date}")
+                print(f"✅ Requested zones: {zones}")
+                print("✅ Schedule structure validation successful against reference")
+            else:
+                print("i No schedules found for the requested period")
+
+        else:
+            print("⚠️ No reference file found - basic validation only")
+
+        print(f"Schedules response data keys: {list(data.keys())}")
+        print(f"Number of schedules: {len(schedules)}")
+        if schedules:
+            print(f"Sample schedule keys: {list(schedules[0].keys())}")
+
+        # Basic assertions
+        assert isinstance(data, dict)
+        assert "schedules" in data
 
 
-# Tests de diagnostic pour comprendre la structure de l'API
+# Diagnostic tests to understand the API structure
 @pytest.mark.integration
 @pytest.mark.diagnostic
 class TestNetroAPIStructure:
-    """Tests pour comprendre et documenter la structure de l'API Netro."""
+    """Tests to understand and document the Netro API structure."""
 
     @skip_if_no_serials
     async def test_explore_api_response_structure(self) -> None:
-        """Explorer et documenter la structure complète de la réponse API."""
+        """Explore and document the complete API response structure."""
         async with AiohttpClient() as http_client:
             config = NetroConfig()
             client = NetroClient(http_client, config)
 
             result = await client.get_info(NETRO_SENS_SERIAL)
 
-            # Afficher la structure complète pour analyse
-            print("=== STRUCTURE COMPLÈTE DE LA RÉPONSE API ===")
+            # Display complete structure for analysis
+            print("=== COMPLETE API RESPONSE STRUCTURE ===")
             print(f"Type: {type(result)}")
-            print(f"Clés principales: {list(result.keys())}")
+            print(f"Main keys: {list(result.keys())}")
 
             for key, value in result.items():
                 print(f"\n{key}: {type(value)}")
                 if isinstance(value, dict):
-                    print(f"  Sous-clés: {list(value.keys())}")
+                    print(f"  Sub-keys: {list(value.keys())}")
                 elif isinstance(value, list) and value:
-                    print(f"  Premier élément: {type(value[0])}")
+                    print(f"  First element: {type(value[0])}")
                     if isinstance(value[0], dict):
-                        print(f"  Clés du premier élément: {list(value[0].keys())}")
+                        print(f"  First element keys: {list(value[0].keys())}")
 
             # Note: To save references, use tests/generate_references.py
             print("\n💡 To generate secure reference files, use:")

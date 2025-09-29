@@ -13,6 +13,7 @@ netro_api_*.json
 # Real API response files with sensitive serial numbers
 tests/reference_data/sensor_response.json
 tests/reference_data/sprite_response.json
+tests/reference_data/sprite_response_schedules.json
 
 # Environment files (contain sensitive data)
 .env
