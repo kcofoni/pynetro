@@ -5,117 +5,147 @@ Designed to integrate with Home Assistant but usable anywhere.
 
 ## Installation
 
-### 🚀 Installation rapide
+### 🚀 Quick Installation
 
 ```bash
-# Cloner le projet
+# Clone the project
 git clone https://github.com/kcofoni/pynetro.git
 cd pynetro
 
-# Installer en mode développement
+# Install in development mode
 pip install -e .
 ```
 
-### 🛠️ Installation complète pour le développement
+### 🛠️ Complete Development Setup
 
-#### 1. Prérequis
-- Python 3.10 ou supérieur
+#### 1. Prerequisites
+- Python 3.10 or higher
 - git
 
-#### 2. Configuration de l'environnement
+#### 2. Environment Setup
 
 ```bash
-# Cloner le projet
+# Clone the project
 git clone https://github.com/kcofoni/pynetro.git
 cd pynetro
 
-# Créer un environnement virtuel
+# Create a virtual environment
 python -m venv .venv
 
-# Activer l'environnement virtuel
-# Sur Linux/macOS :
+# Activate the virtual environment
+# On Linux/macOS:
 source .venv/bin/activate
 
-# Sur Windows :
+# On Windows:
 # .venv\Scripts\activate
 
-# Vérifier que l'environnement est activé (le prompt doit afficher (.venv))
-which python  # Doit pointer vers .venv/bin/python
+# Verify the environment is activated (prompt should show (.venv))
+which python  # Should point to .venv/bin/python
 ```
 
-#### 3. Installation des dépendances
+#### 3. Install Dependencies
 
 ```bash
-# Installer le projet en mode développement
+# Install the project in development mode
 pip install -e .
 
-# Installer les dépendances de développement (tests, linting, etc.)
+# Install development dependencies (tests, linting, etc.)
 pip install -r requirements-dev.txt
 ```
 
-#### 4. Vérification de l'installation
+#### 4. Verify Installation
 
 ```bash
-# Vérifier que tout fonctionne
+# Run unit tests to verify everything works
 pytest tests/test_client.py -v
 
-# Vérifier le linting
+# Check linting
 ruff check src/ tests/
 ```
 
-#### 5. Configuration pour les tests d'intégration (optionnel)
+### 🧪 Testing
+
+Run tests using pytest commands:
+
+#### 5. Integration Tests Configuration (optional)
 
 ```bash
-# Créer un fichier .env avec vos numéros de série d'appareils Netro
+# Create an .env file with your Netro device serial numbers
 cp .env.example .env
-# Puis éditer .env avec vos vraies valeurs
+# Then edit .env with your actual values
 
-# Tester les intégrations (nécessite une connexion internet et des appareils Netro)
+# Generate reference files for development (contains real serial numbers, ignored by git)
+python tests/generate_references.py
+
+# Test integrations (requires internet connection and Netro devices)
 pytest tests/test_integration.py -v -m integration
 ```
 
-### 🔧 Résolution de problèmes courants
+**Security Note**: Reference files are automatically ignored by git as they contain real device serial numbers. Template files with anonymized data are provided for understanding the API structure.
 
-#### Environnement virtuel non activé
+### 🔧 Common Troubleshooting
+
+#### Virtual environment not activated
 ```bash
-# Vérifier que l'environnement est activé
-which python  # Doit pointer vers .venv/bin/python
-echo $VIRTUAL_ENV  # Doit afficher le chemin vers .venv
+# Check that the environment is activated
+which python  # Should point to .venv/bin/python
+echo $VIRTUAL_ENV  # Should display the path to .venv
 
-# Si pas activé :
+# If not activated:
 source .venv/bin/activate  # Linux/macOS
 # .venv\Scripts\activate   # Windows
 ```
 
-#### Erreurs d'import lors des tests
+#### Import errors during tests
 ```bash
-# Réinstaller le projet en mode développement
+# Reinstall the project in development mode
 pip install -e .
 ```
 
-#### Tests d'intégration skippés
+#### Integration tests skipped
 ```bash
-# Les tests d'intégration nécessitent des variables d'environnement
-export NETRO_SENS_SERIAL="votre_serial_sensor"
-export NETRO_CTRL_SERIAL="votre_serial_controller"
+# Integration tests require environment variables
+export NETRO_SENS_SERIAL="your_sensor_serial"
+export NETRO_CTRL_SERIAL="your_controller_serial"
 
-# Vérifier que les variables sont définies
+# Verify variables are set
 echo $NETRO_SENS_SERIAL $NETRO_CTRL_SERIAL
 ```
 
 ### Tests
 
-Le projet dispose d'une suite de tests complète avec 14 tests (5 unitaires + 9 intégration).
+The project has a comprehensive test suite with 14 tests (5 unit + 9 integration).
 
 ```bash
-# Lancer tous les tests
+# Run all tests
 pytest tests/ -v
 
-# Tests unitaires seulement (toujours disponibles)
+# Unit tests only (always available)
 pytest tests/test_client.py -v
 
-# Tests d'intégration (nécessitent des variables d'environnement)
+# Integration tests (require environment variables)
 pytest tests/test_integration.py -v -m integration
 ```
 
-📖 **Documentation complète des tests** : Voir [`tests/README.md`](tests/README.md) pour toutes les commandes et options avancées.
+📚 **Complete testing documentation**: See [`tests/README.md`](tests/README.md) for all commands and advanced options.
+
+## Security & Reference Files
+
+For security reasons, files containing real device serial numbers are automatically ignored by git:
+- `tests/reference_data/sensor_response.json` 
+- `tests/reference_data/controller_response.json`
+
+**What's available for fresh clones:**
+- ✅ Anonymized templates showing API structure (`*_template.json`)
+- ✅ Generation script to create real reference files when needed
+- ✅ All functionality works without these files - they're optional documentation
+
+**If you need the real reference files:**
+```bash
+# Set your device serial numbers
+export NETRO_SENS_SERIAL="your_sensor_serial" 
+export NETRO_CTRL_SERIAL="your_controller_serial"
+
+# Generate the files (will be ignored by git)
+python tests/generate_references.py
+```

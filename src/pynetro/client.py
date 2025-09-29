@@ -74,29 +74,29 @@ class NetroClient:
 
     async def _handle(self, resp: AsyncHTTPResponse) -> dict[str, Any]:
         """Handle HTTP + NPA JSON envelope."""
-        # D'abord, essayons de lire le JSON pour voir si c'est une erreur métier Netro
+        # First, try to read JSON to see if it's a Netro business error
         try:
             data = await resp.json()
         except Exception as exc:
-            # Si on ne peut pas lire le JSON, c'est probablement une vraie erreur HTTP
+            # If we can't read JSON, it's probably a real HTTP error
             if resp.status in (401, 403):
                 msg = f"HTTP {resp.status}: Authentication failed"
                 raise NetroAuthError(msg) from exc
-            resp.raise_for_status()  # Lève l'exception HTTP appropriée
+            resp.raise_for_status()  # Raise appropriate HTTP exception
             msg = f"HTTP {resp.status}: Unable to parse JSON response"
             raise NetroError(msg) from exc
 
-        # La NPA renvoie une enveloppe {"status": "OK"/"ERROR", "data": {...}, "meta": {...}}
+        # NPA returns an envelope {"status": "OK"/"ERROR", "data": {...}, "meta": {...}}
         status = data.get("status")
 
         if status == "OK":
-            # Tout va bien, retourner la réponse complète
+            # All good, return complete response
             return data
         elif status == "ERROR":
-            # Erreur métier Netro, analyser les détails
+            # Netro business error, analyze details
             errs = data.get("errors") or []
             if isinstance(errs, list) and errs:
-                # Construire le message d'erreur à partir des erreurs
+                # Build error message from errors
                 messages = []
                 for err in errs:
                     if isinstance(err, dict):
@@ -109,7 +109,7 @@ class NetroClient:
 
                 error_msg = "; ".join(messages) if messages else "API ERROR"
 
-                # Détecter les erreurs d'authentification
+                # Detect authentication errors
                 if any("invalid key" in msg.lower() for msg in messages):
                     raise NetroAuthError(error_msg)
                 else:
@@ -117,11 +117,11 @@ class NetroClient:
             else:
                 raise NetroError("API returned ERROR status without details")
         else:
-            # Status inattendu ou manquant
+            # Unexpected or missing status
             if resp.status in (401, 403):
                 msg = f"HTTP {resp.status}: Authentication failed"
                 raise NetroAuthError(msg)
-            resp.raise_for_status()  # Pour les autres codes d'erreur HTTP
+            resp.raise_for_status()  # For other HTTP error codes
             msg = f"Unexpected API response status: {status}"
             raise NetroError(msg)
 
@@ -180,7 +180,7 @@ class NetroClient:
         if end_date:
             params["end_date"] = end_date
         if zones is not None:
-            # La doc montre zones=[1,2] dans la query → on sérialise en JSON
+            # The docs show zones=[1,2] in query → serialize as JSON
             params["zones"] = json.dumps(list(zones))
         url = f"{self._base}/schedules.json"
         async with self._http.get(

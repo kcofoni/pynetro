@@ -16,7 +16,7 @@ from pynetro.client import NetroAuthError, NetroClient, NetroConfig, NetroError
 
 from .aiohttp_client import AiohttpClient
 
-# Variables d'environnement pour les tests d'intégration
+# Environment variables for integration tests
 NETRO_API_KEY = os.environ.get("NETRO_API_KEY")
 NETRO_CTRL_SERIAL = os.environ.get("NETRO_CTRL_SERIAL")
 NETRO_SENS_SERIAL = os.environ.get("NETRO_SENS_SERIAL")
@@ -64,7 +64,7 @@ class TestNetroClientIntegration:
         # Act
         result = await client.get_info(sensor_key)
 
-        # Assert - Vérifier la structure de la réponse sensor
+        # Assert - Verify sensor response structure
         assert isinstance(result, dict)
         assert result["status"] == "OK"
         assert "data" in result
@@ -90,7 +90,7 @@ class TestNetroClientIntegration:
         # Act
         result = await client.get_info(controller_key)
 
-        # Assert - Vérifier la structure de la réponse controller
+        # Assert - Verify controller response structure
         assert isinstance(result, dict)
         assert result["status"] == "OK"
         assert "data" in result
@@ -123,7 +123,7 @@ class TestNetroClientIntegration:
             assert sensor_result["status"] == "OK"
             assert controller_result["status"] == "OK"
 
-            # Vérifier les structures spécifiques
+            # Verify specific structures
             sensor_data = sensor_result["data"]
             controller_data = controller_result["data"]
 
@@ -135,12 +135,12 @@ class TestNetroClientIntegration:
             assert "device" in controller_data
             assert "device" not in sensor_data
 
-            # Vérifier les champs spécifiques du sensor
+            # Verify sensor-specific fields
             sensor_info = sensor_data["sensor"]
             assert "battery_level" in sensor_info, "Sensor should have battery_level"
             assert "zone_num" not in sensor_info, "Sensor should not have zone_num"
 
-            # Vérifier les champs spécifiques du controller
+            # Verify controller-specific fields
             controller_info = controller_data["device"]
             assert "zones" in controller_info, "Controller should have zones"
             assert "zone_num" in controller_info, "Controller should have zone_num"
@@ -158,12 +158,12 @@ class TestNetroClientIntegration:
         # Act - Use sensor by default
         result = await client.get_info(NETRO_SENS_SERIAL)
 
-        # Assert - Vérifier la structure de la réponse
+        # Assert - Verify response structure
         assert isinstance(result, dict)
         assert "status" in result
         assert result["status"] == "OK"
 
-        # Vérifier que les sections attendues sont présentes
+        # Verify that expected sections are present
         assert "data" in result
         data = result["data"]
 
@@ -182,7 +182,7 @@ class TestNetroClientIntegration:
         # Assert - Validation de structure plus détaillée
         assert isinstance(result, dict)
 
-        # Vérifier l'enveloppe API Netro
+        # Verify Netro API envelope
         required_top_level = ["status"]
         for field in required_top_level:
             assert field in result, f"Champ manquant: {field}"
@@ -193,7 +193,7 @@ class TestNetroClientIntegration:
             data = result["data"]
             assert isinstance(data, dict)
 
-            # Vérifier quelques champs communs (selon la doc Netro)
+            # Verify some common fields (according to Netro docs)
             # Note: la structure exacte dépend de votre compte
             print(f"Structure des données: {list(data.keys())}")
 
@@ -223,7 +223,7 @@ class TestNetroClientIntegration:
 
     @skip_if_no_serials
     async def test_get_info_with_custom_config(self) -> None:
-        """Test avec une configuration personnalisée."""
+        """Test with custom configuration."""
         # Arrange
         custom_config = NetroConfig(
             base_url="https://api.netrohome.com/npa/v1",  # URL officielle
@@ -271,6 +271,6 @@ class TestNetroAPIStructure:
                     if isinstance(value[0], dict):
                         print(f"  Clés du premier élément: {list(value[0].keys())}")
 
-            # Note: Pour sauvegarder des références, utilisez tests/generate_references.py
-            print("\n💡 Pour générer des fichiers de référence sécurisés, utilisez:")
+            # Note: To save references, use tests/generate_references.py
+            print("\n💡 To generate secure reference files, use:")
             print("   python tests/generate_references.py")

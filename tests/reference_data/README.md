@@ -1,21 +1,21 @@
-# Référence des Réponses API Netro
+# Netro API Response Reference
 
-Ce répertoire contient les structures de réponse de référence pour l'API Netro Public API v1.
+This directory contains reference response structures for Netro Public API v1.
 
-## Fichiers de référence
+## Reference Files
 
 ### `sensor_response.json`
-Réponse type pour un **sensor/capteur** Netro (ex: capteur d'humidité).
+Typical response for a Netro **sensor** device (e.g., humidity sensor).
 
-**Structure** :
+**Structure**:
 ```json
 {
   "status": "OK",
   "meta": { ... },
   "data": {
     "sensor": {
-      "name": "Nom du capteur",
-            "serial": "34******a4",  // Remplacer par votre numéro de série
+      "name": "Sensor Name",
+      "serial": "34******a4",  // Replace with your serial number
       "status": "ONLINE|OFFLINE",
       "version": "3.1",
       "sw_version": "3.1.3", 
@@ -26,21 +26,21 @@ Réponse type pour un **sensor/capteur** Netro (ex: capteur d'humidité).
 }
 ```
 
-**Champs spécifiques sensor** :
-- `battery_level` : Niveau de batterie (0.0 à 1.0)
+**Sensor-specific fields**:
+- `battery_level`: Battery level (0.0 to 1.0)
 
 ### `controller_response.json`
-Réponse type pour un **controller/contrôleur** Netro (ex: contrôleur d'arrosage).
+Typical response for a Netro **controller** device (e.g., irrigation controller).
 
-**Structure** :
+**Structure**:
 ```json
 {
   "status": "OK", 
   "meta": { ... },
   "data": {
     "device": {
-      "name": "Nom du contrôleur",
-      "serial": "YYYYYYYYYYYY",  // Remplacer par votre numéro de série
+      "name": "Controller Name",
+      "serial": "YYYYYYYYYYYY",  // Replace with your serial number
       "status": "ONLINE|OFFLINE",
       "version": "1.2",
       "sw_version": "1.1.1",
@@ -59,23 +59,40 @@ Réponse type pour un **controller/contrôleur** Netro (ex: contrôleur d'arrosa
 }
 ```
 
-**Champs spécifiques controller** :
-- `zone_num` : Nombre de zones d'arrosage
-- `zones[]` : Liste des zones configurées
+**Controller-specific fields**:
+- `zone_num`: Number of irrigation zones
+- `zones[]`: List of configured zones
 
-## Usage dans les tests
+## Usage in Tests
 
-Ces fichiers sont utilisés comme référence pour :
-- Valider les structures de réponse dans les tests d'intégration
-- Documenter les différences entre sensor et controller
-- Créer des mocks réalistes dans les tests unitaires
+These files are used as reference for:
+- Validating response structures in integration tests
+- Documenting differences between sensor and controller
+- Creating realistic mocks in unit tests
 
-## Génération
+## Files in this directory
 
-Les fichiers sont générés automatiquement via :
+### Template files (committed to git):
+- `sensor_response_template.json` - Anonymized sensor response structure
+- `controller_response_template.json` - Anonymized controller response structure
+
+### Real response files (ignored by git):
+- `sensor_response.json` - Real sensor data with your serial numbers
+- `controller_response.json` - Real controller data with your serial numbers
+
+## Generation
+
+Real response files are automatically generated when you have environment variables set:
+
 ```bash
-# Exécuter le script de génération des références
-python -c "from tests.generate_references import generate; generate()"
+# Set your device serial numbers
+export NETRO_SENS_SERIAL="your_sensor_serial"
+export NETRO_CTRL_SERIAL="your_controller_serial"
+
+# Generate real response files (will be ignored by git)
+python -c "from tests.generate_references import generate_all_references; import asyncio; asyncio.run(generate_all_references())"
 ```
 
-Dernière mise à jour : 28 septembre 2025
+**Note**: The real response files contain your actual device serial numbers and are automatically ignored by git for security.
+
+Last updated: September 29, 2025
