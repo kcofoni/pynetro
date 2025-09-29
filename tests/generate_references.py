@@ -16,7 +16,10 @@ from pathlib import Path
 
 from pynetro.client import NetroClient, NetroConfig
 
-from .aiohttp_client import AiohttpClient
+try:
+    from .aiohttp_client import AiohttpClient
+except ImportError:
+    from tests.aiohttp_client import AiohttpClient
 
 # Environment variables for serial numbers
 NETRO_SENS_SERIAL = os.getenv("NETRO_SENS_SERIAL")
@@ -52,7 +55,7 @@ async def generate_all_references() -> None:
         # Generate controller reference
         print("  🎮 Retrieving controller data...")
         controller_result = await client.get_info(NETRO_CTRL_SERIAL)
-        controller_file = reference_dir / "controller_response.json"
+        controller_file = reference_dir / "sprite_response.json"
         with controller_file.open("w") as f:
             json.dump(controller_result, f, indent=2, default=str)
         print(f"  ✅ Controller: {controller_file}")
@@ -62,6 +65,13 @@ async def generate_all_references() -> None:
         print(f"  Controller data keys: {list(controller_result['data'].keys())}")
         print(f"  Sensor fields: {list(sensor_result['data']['sensor'].keys())}")
         print(f"  Controller fields: {list(controller_result['data']['device'].keys())}")
+
+        # Detect controller type
+        device_data = controller_result['data']['device']
+        controller_type = "Pixie" if device_data.get('battery_level') is not None else "Sprite"
+        zone_count = device_data.get('zone_num', 'unknown')
+        zone_text = f"{zone_count} zone{'s' if zone_count != 1 else ''}"
+        print(f"  Controller type detected: {controller_type} ({zone_text})")
 
 
 def load_sensor_reference() -> dict:
@@ -81,15 +91,16 @@ def load_sensor_reference() -> dict:
 
 
 def load_controller_reference() -> dict:
-    """Load the controller reference file.
+    """Load the Sprite controller reference file.
 
-    Returns the real controller data if available, otherwise suggests generation.
+    Returns the real Sprite controller data if available, otherwise suggests generation.
     """
-    reference_file = Path(__file__).parent / "reference_data" / "controller_response.json"
+    reference_file = Path(__file__).parent / "reference_data" / "sprite_response.json"
     if not reference_file.exists():
         print(f"❌ Reference file not found: {reference_file}")
         print("💡 Run: python tests/generate_references.py")
-        print("📖 Or use template: tests/reference_data/controller_response_template.json")
+        print("📖 Or use templates: tests/reference_data/sprite_response_template.json")
+        print("📖                  tests/reference_data/pixie_response_template.json")
         return {}
 
     with reference_file.open() as f:

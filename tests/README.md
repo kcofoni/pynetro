@@ -97,7 +97,58 @@ pytest tests/test_integration.py::TestNetroIntegration::test_get_info_sensor_suc
 - **Variables missing** → Tests are **automatically skipped**
 - **No errors** → Graceful handling with informative skip messages
 
-## 📊 Coverage Reports
+## �️ Viewing Test Output and Debug Information
+
+### The `-s` Option (Show Print Statements)
+
+By default, pytest **captures and hides** all `print()` statements from passing tests. To see debug output:
+
+```bash
+# Show all print statements (recommended for debugging)
+pytest tests/ -s -v
+
+# Show prints for specific test
+pytest tests/test_integration.py::TestNetroClientIntegration::test_get_info_controller_device -s -v
+
+# Alternative syntax
+pytest tests/ --capture=no -v
+```
+
+### When You See Prints
+
+| Command | Passing Tests | Failing Tests |
+|---------|---------------|---------------|
+| `pytest` | ❌ Prints hidden | ✅ Prints shown in error report |
+| `pytest -s` | ✅ Prints visible | ✅ Prints visible |
+
+### Example Output with `-s`
+
+```bash
+pytest tests/test_integration.py -s -v
+```
+
+```
+tests/test_integration.py::test_get_info_controller_device PASSED
+🔍 Validating against reference structure...
+✅ Controller type detected: Sprite
+✅ Zone count: 6
+✅ Structure validation successful against reference
+Controller response data keys: ['device']
+```
+
+### Example Output without `-s`
+
+```bash
+pytest tests/test_integration.py -v
+```
+
+```
+tests/test_integration.py::test_get_info_controller_device PASSED
+```
+
+**💡 Tip**: Use `-s` when developing tests or debugging API responses to see all validation messages in real-time!
+
+## �📊 Coverage Reports
 
 ```bash
 # Generate HTML coverage report

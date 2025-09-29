@@ -115,20 +115,49 @@ class TestNetroClient:
         """Provide a NetroClient with mock HTTP client."""
         return NetroClient(mock_http, config)
 
-    async def test_get_info_success(
+    async def test_get_sprite_info_success(
         self, client: NetroClient, mock_http: MockHTTPClient
     ) -> None:
-        """Test successful get_info call."""
+        """Test successful get_info call for Sprite controller (AC-powered, multi-zone)."""
         # Arrange
-        test_key = "TEST_API_KEY"
+        test_key = "YYYYYYYYYYYY"
         expected_url = "https://api.netrohome.com/npa/v1/info.json"
         expected_response = {
             "status": "OK",
-            "data": {
-                "account": {"name": "Test User"},
-                "devices": [{"id": 1, "name": "Test Device"}],
+            "meta": {
+                "time": "2025-09-28T20:14:48",
+                "tid": "1759090488_MfGR",
+                "version": "1.0",
+                "token_limit": 2000,
+                "token_remaining": 704,
+                "last_active": "2025-09-28T20:14:48",
+                "token_reset": "2025-09-29T00:00:00"
             },
-            "meta": {"timestamp": "2025-09-28T10:00:00Z"},
+            "data": {
+                "device": {
+                    "name": "Example Controller",
+                    "serial": "YYYYYYYYYYYY",
+                    "status": "ONLINE",
+                    "version": "1.2",
+                    "sw_version": "1.1.1",
+                    "last_active": "2025-09-28T17:28:58",
+                    "zone_num": 6,
+                    "zones": [
+                        {
+                            "name": "Zone 1",
+                            "ith": 1,
+                            "enabled": True,
+                            "smart": "SMART"
+                        },
+                        {
+                            "name": "Zone 2",
+                            "ith": 2,
+                            "enabled": True,
+                            "smart": "SMART"
+                        }
+                    ]
+                }
+            }
         }
 
         # Configure mock response
@@ -148,6 +177,140 @@ class TestNetroClient:
         assert "headers" in call["kwargs"]
         assert call["kwargs"]["headers"]["Accept"] == "application/json"
         assert call["kwargs"]["timeout"] == 10.0
+
+        # Verify Sprite-specific data structure
+        device_data = result["data"]["device"]
+        assert device_data["serial"] == test_key
+        assert "zone_num" in device_data
+        assert device_data["zone_num"] > 1  # Multi-zone
+        assert "zones" in device_data
+        assert len(device_data["zones"]) > 1
+        assert "battery_level" not in device_data  # AC-powered, no battery
+
+    async def test_get_pixie_info_success(
+        self, client: NetroClient, mock_http: MockHTTPClient
+    ) -> None:
+        """Test successful get_info call for Pixie controller (battery-powered, single-zone)."""
+        # Arrange
+        test_key = "XXXXXXXX"
+        expected_url = "https://api.netrohome.com/npa/v1/info.json"
+        expected_response = {
+            "status": "OK",
+            "meta": {
+                "time": "2023-04-03T14:30:49",
+                "tid": "1680532249_LbYQ",
+                "version": "1.0",
+                "token_limit": 2000,
+                "token_remaining": 1999,
+                "last_active": "2023-04-03T14:30:49",
+                "token_reset": "2023-04-04T00:00:00"
+            },
+            "data": {
+                "device": {
+                    "name": "Pixie",
+                    "serial": "XXXXXXXX",
+                    "zone_num": 1,
+                    "status": "ONLINE",
+                    "version": "1.3",
+                    "sw_version": "1.3.2",
+                    "last_active": "2023-04-03T14:26:06",
+                    "battery_level": 0.81,
+                    "zones": [
+                        {
+                            "name": "",
+                            "ith": 1,
+                            "enabled": True,
+                            "smart": "ASSISTANT"
+                        }
+                    ]
+                }
+            }
+        }
+
+        # Configure mock response
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("GET", expected_url, mock_response)
+
+        # Act
+        result = await client.get_info(test_key)
+
+        # Assert
+        assert result == expected_response
+        assert len(mock_http.get_calls) == 1
+
+        call = mock_http.get_calls[0]
+        assert call["url"] == expected_url
+        assert call["kwargs"]["params"] == {"key": test_key}
+        assert "headers" in call["kwargs"]
+        assert call["kwargs"]["headers"]["Accept"] == "application/json"
+        assert call["kwargs"]["timeout"] == 10.0
+
+        # Verify Pixie-specific data structure
+        device_data = result["data"]["device"]
+        assert device_data["serial"] == test_key
+        assert "zone_num" in device_data
+        assert device_data["zone_num"] == 1  # Single-zone
+        assert "zones" in device_data
+        assert len(device_data["zones"]) == 1
+        assert "battery_level" in device_data  # Battery-powered
+        assert isinstance(device_data["battery_level"], float)
+        assert 0.0 <= device_data["battery_level"] <= 1.0
+
+    async def test_get_sens_info_success(
+        self, client: NetroClient, mock_http: MockHTTPClient
+    ) -> None:
+        """Test successful get_info call for sensor device."""
+        # Arrange
+        test_key = "SSSSSSSSSSSS"
+        expected_url = "https://api.netrohome.com/npa/v1/info.json"
+        expected_response = {
+            "status": "OK",
+            "meta": {
+                "time": "2025-09-28T20:14:48",
+                "tid": "1759090488_MfGR",
+                "version": "1.0",
+                "token_limit": 2000,
+                "token_remaining": 704,
+                "last_active": "2025-09-28T20:14:48",
+                "token_reset": "2025-09-29T00:00:00"
+            },
+            "data": {
+                "sensor": {
+                    "name": "Example Sensor",
+                    "serial": "SSSSSSSSSSSS",
+                    "status": "ONLINE",
+                    "version": "3.1",
+                    "sw_version": "3.1.3",
+                    "last_active": "2025-09-28T17:03:26",
+                    "battery_level": 0.63
+                }
+            }
+        }
+
+        # Configure mock response
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("GET", expected_url, mock_response)
+
+        # Act
+        result = await client.get_info(test_key)
+
+        # Assert
+        assert result == expected_response
+        assert len(mock_http.get_calls) == 1
+
+        call = mock_http.get_calls[0]
+        assert call["url"] == expected_url
+        assert call["kwargs"]["params"] == {"key": test_key}
+        assert "headers" in call["kwargs"]
+        assert call["kwargs"]["headers"]["Accept"] == "application/json"
+        assert call["kwargs"]["timeout"] == 10.0
+
+        # Verify sensor-specific data structure
+        sensor_data = result["data"]["sensor"]
+        assert sensor_data["serial"] == test_key
+        assert "battery_level" in sensor_data
+        assert isinstance(sensor_data["battery_level"], float)
+        assert 0.0 <= sensor_data["battery_level"] <= 1.0
 
     async def test_get_info_api_error(
         self, client: NetroClient, mock_http: MockHTTPClient

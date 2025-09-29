@@ -29,7 +29,7 @@ Typical response for a Netro **sensor** device (e.g., humidity sensor).
 **Sensor-specific fields**:
 - `battery_level`: Battery level (0.0 to 1.0)
 
-### `controller_response.json`
+### `sprite_response.json`
 Typical response for a Netro **controller** device (e.g., irrigation controller).
 
 **Structure**:
@@ -74,11 +74,12 @@ These files are used as reference for:
 
 ### Template files (committed to git):
 - `sensor_response_template.json` - Anonymized sensor response structure
-- `controller_response_template.json` - Anonymized controller response structure
+- `sprite_response_template.json` - Anonymized Sprite controller (AC-powered) response structure
+- `pixie_response_template.json` - Anonymized Pixie controller (battery-powered) response structure
 
 ### Real response files (ignored by git):
 - `sensor_response.json` - Real sensor data with your serial numbers
-- `controller_response.json` - Real controller data with your serial numbers
+- `sprite_response.json` - Real Sprite controller data with your serial numbers
 
 ## Generation
 

@@ -6,9 +6,11 @@ Ils sont marqués comme 'integration' pour pouvoir les exécuter séparément.
 
 from __future__ import annotations
 
+import json
 import os
 import time
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 import pytest
 
@@ -23,13 +25,12 @@ NETRO_SENS_SERIAL = os.environ.get("NETRO_SENS_SERIAL")
 
 # Skip integration tests if required environment variables are not provided
 skip_if_no_key = pytest.mark.skipif(
-    not NETRO_API_KEY,
-    reason="NETRO_API_KEY environment variable not set"
+    not NETRO_API_KEY, reason="NETRO_API_KEY environment variable not set"
 )
 
 skip_if_no_serials = pytest.mark.skipif(
     not (NETRO_CTRL_SERIAL and NETRO_SENS_SERIAL),
-    reason="NETRO_CTRL_SERIAL and/or NETRO_SENS_SERIAL environment variables not set"
+    reason="NETRO_CTRL_SERIAL and/or NETRO_SENS_SERIAL environment variables not set",
 )
 
 
@@ -49,17 +50,22 @@ class TestNetroClientIntegration:
         return NetroConfig()
 
     @pytest.fixture
-    async def client(
-        self, real_http_client: AiohttpClient, config: NetroConfig
-    ) -> NetroClient:
+    async def client(self, real_http_client: AiohttpClient, config: NetroConfig) -> NetroClient:
         """Provide a NetroClient with real HTTP client."""
         return NetroClient(real_http_client, config)
 
     @skip_if_no_serials
     async def test_get_info_sensor_device(self, client: NetroClient) -> None:
-        """Test get_info with Netro sensor device."""
+        """Test get_info with Netro sensor device and validate against reference structure."""
         # Arrange - Sensor serial from environment
         sensor_key = NETRO_SENS_SERIAL
+
+        # Load reference structure
+        reference_file = Path(__file__).parent / "reference_data" / "sensor_response.json"
+        reference_data = None
+        if reference_file.exists():
+            with reference_file.open() as f:
+                reference_data = json.load(f)
 
         # Act
         result = await client.get_info(sensor_key)
@@ -79,13 +85,38 @@ class TestNetroClientIntegration:
         assert "status" in sensor_info
         assert "battery_level" in sensor_info
 
+        # Validate against reference structure if available
+        if reference_data:
+            print("🔍 Validating sensor against reference structure...")
+            reference_sensor = reference_data["data"]["sensor"]
+
+            # Check that all expected fields from reference are present
+            for field in reference_sensor.keys():
+                assert field in sensor_info, f"Missing expected field: {field}"
+
+            # Validate sensor-specific fields
+            battery_level = sensor_info["battery_level"]
+            assert isinstance(battery_level, (int, float)), "battery_level should be numeric"
+            assert 0.0 <= battery_level <= 1.0, "battery_level should be between 0 and 1"
+
+            print("✅ Sensor structure validation successful against reference")
+        else:
+            print("⚠️ No sensor reference file found - basic validation only")
+
         print(f"Sensor info: {sensor_info}")
 
     @skip_if_no_serials
     async def test_get_info_controller_device(self, client: NetroClient) -> None:
-        """Test get_info with Netro controller device."""
+        """Test get_info with Netro controller device and validate against reference structure."""
         # Arrange - Controller serial from environment
         controller_key = NETRO_CTRL_SERIAL
+
+        # Load reference structure
+        reference_file = Path(__file__).parent / "reference_data" / "sprite_response.json"
+        reference_data = None
+        if reference_file.exists():
+            with reference_file.open() as f:
+                reference_data = json.load(f)
 
         # Act
         result = await client.get_info(controller_key)
@@ -97,11 +128,47 @@ class TestNetroClientIntegration:
         assert "meta" in result
 
         data = result["data"]
-        # Les controllers peuvent avoir une structure différente des sensors
-        print(f"Controller response data keys: {list(data.keys())}")
-        print(f"Controller full response: {result}")
+        assert "device" in data, "Controller response should contain 'device' key"
 
-        # Assertions basiques - nous découvrirons la structure exacte
+        device_info = data["device"]
+        assert device_info["serial"] == controller_key
+
+        # Validate against reference structure if available
+        if reference_data:
+            print("🔍 Validating against reference structure...")
+            reference_device = reference_data["data"]["device"]
+
+            # Check that all expected fields from reference are present
+            for field in reference_device.keys():
+                assert field in device_info, f"Missing expected field: {field}"
+
+            # Validate controller-specific fields
+            assert "zone_num" in device_info, "Controller should have zone_num"
+            assert "zones" in device_info, "Controller should have zones array"
+            assert isinstance(device_info["zones"], list), "zones should be a list"
+            assert len(device_info["zones"]) > 0, "Controller should have at least one zone"
+
+            # Check zone structure
+            for zone in device_info["zones"]:
+                assert "name" in zone, "Zone should have name"
+                assert "ith" in zone, "Zone should have ith (index)"
+                assert "enabled" in zone, "Zone should have enabled status"
+                assert "smart" in zone, "Zone should have smart mode"
+
+            # Detect controller type (Sprite vs Pixie)
+            controller_type = "Pixie" if "battery_level" in device_info else "Sprite"
+            zone_count = device_info.get("zone_num", 0)
+
+            print(f"✅ Controller type detected: {controller_type}")
+            print(f"✅ Zone count: {zone_count}")
+            print("✅ Structure validation successful against reference")
+        else:
+            print("⚠️ No reference file found - basic validation only")
+
+        print(f"Controller response data keys: {list(data.keys())}")
+        print(f"Device info keys: {list(device_info.keys())}")
+
+        # Basic assertions
         assert isinstance(data, dict)
         assert len(data) > 0, "Controller response should contain data"
 
@@ -144,9 +211,9 @@ class TestNetroClientIntegration:
             controller_info = controller_data["device"]
             assert "zones" in controller_info, "Controller should have zones"
             assert "zone_num" in controller_info, "Controller should have zone_num"
-            assert (
-                "battery_level" not in controller_info
-            ), "Controller should not have battery_level"
+            assert "battery_level" not in controller_info, (
+                "Controller should not have battery_level"
+            )
 
             print(f"✅ Sensor structure validated: {list(sensor_info.keys())}")
             print(f"✅ Controller structure validated: {list(controller_info.keys())}")
@@ -172,9 +239,7 @@ class TestNetroClientIntegration:
         print(f"Réponse API réelle reçue: {result}")
 
     @skip_if_no_serials
-    async def test_get_info_real_api_structure_validation(
-        self, client: NetroClient
-    ) -> None:
+    async def test_get_info_real_api_structure_validation(self, client: NetroClient) -> None:
         """Test que la structure de la réponse correspond à nos attentes."""
         # Act
         result = await client.get_info(NETRO_SENS_SERIAL)
@@ -228,7 +293,7 @@ class TestNetroClientIntegration:
         custom_config = NetroConfig(
             base_url="https://api.netrohome.com/npa/v1",  # URL officielle
             default_timeout=15.0,
-            extra_headers={"User-Agent": "PyNetro-Test/1.0"}
+            extra_headers={"User-Agent": "PyNetro-Test/1.0"},
         )
 
         async with AiohttpClient() as http_client:

@@ -133,7 +133,7 @@ pytest tests/test_integration.py -v -m integration
 
 For security reasons, files containing real device serial numbers are automatically ignored by git:
 - `tests/reference_data/sensor_response.json` 
-- `tests/reference_data/controller_response.json`
+- `tests/reference_data/sprite_response.json`
 
 **What's available for fresh clones:**
 - ✅ Anonymized templates showing API structure (`*_template.json`)
