@@ -127,7 +127,7 @@ pytest tests/test_client.py -v
 pytest tests/test_integration.py -v -m integration
 ```
 
-📚 **Complete testing documentation**: See [`tests/README.md`](tests/README.md) for all commands and advanced options.
+📚 **Complete testing documentation** → [tests/README.md](https://github.com/kcofoni/pynetro/blob/main/tests/README.md)
 
 ## Security & Reference Files
 

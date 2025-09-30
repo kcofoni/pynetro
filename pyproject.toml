@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pynetro"
-version = "0.1.0"
+version = "0.1.1"
 description = "Async Python wrapper for Netro API (HTTP-agnostic, HA-friendly)"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,12 +12,25 @@ license = {text = "MIT"}
 authors = [{ name = "kcofoni", email = "kcofoni@gmail.com" }]
 keywords = ["netro", "irrigation", "asyncio", "home-assistant", "api"]
 classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Topic :: Home Automation",
+  "Topic :: Software Development :: Libraries :: Python Modules",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11", 
+  "Programming Language :: Python :: 3.12",
   "Framework :: AsyncIO",
-  "License :: OSI Approved :: MIT License"
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent"
 ]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/kcofoni/pynetro"
+Repository = "https://github.com/kcofoni/pynetro"
+Issues = "https://github.com/kcofoni/pynetro/issues"
+Documentation = "https://github.com/kcofoni/pynetro#readme"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -27,34 +40,36 @@ line-length = 100
 target-version = "py310"
 
 [tool.ruff.lint]
-# Sélection de règles de qualité importantes mais équilibrées
+# Selection of important but balanced quality rules
+
 select = [
     "E",    # pycodestyle errors
     "W",    # pycodestyle warnings
     "F",    # pyflakes
     "I",    # isort
-    "UP",   # pyupgrade (modernisation du code)
+    "UP",   # pyupgrade (code modernization)
     "D",    # pydocstyle (docstrings)
-    "TRY",  # tryceratops (gestion d'erreurs)
+    "TRY",  # tryceratops (error handling)
     "EM",   # flake8-errmsg
     "RUF",  # Ruff-specific rules
 ]
 
-# Ignore certaines règles trop strictes pour commencer
+# Ignore some overly strict rules for now
+
 ignore = [
-    "D203",  # 1 blank line required before class docstring (conflicte avec D211)
-    "D213",  # Multi-line docstring summary should start at the second line (conflicte avec D212)
-    "TRY003", # Avoid specifying long messages outside the exception class (à corriger progressivement)
-    "EM101", # Exception must not use a string literal (à corriger progressivement)
-    "PIE790", # Unnecessary ellipsis constant (approprié dans les Protocols)
+    "D203",  # 1 blank line required before class docstring (conflicts with D211)
+    "D213",  # Multi-line docstring summary should start at the second line (conflicts with D212)
+    "TRY003", # Avoid specifying long messages outside the exception class (to be fixed gradually)
+    "EM101", # Exception must not use a string literal (to be fixed gradually)
+    "PIE790", # Unnecessary ellipsis constant (appropriate in Protocols)
 ]
 
 [tool.ruff.lint.pydocstyle]
-convention = "google"  # Style Google pour les docstrings
+convention = "google"  # Google style for docstrings
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
 
 [tool.pylint."messages control"]
-disable = "unnecessary-ellipsis"  # W2301 - Approprié dans les Protocols
+disable = "unnecessary-ellipsis"  # W2301 - Appropriate in Protocols

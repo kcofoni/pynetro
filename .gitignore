@@ -25,3 +25,8 @@ htmlcov/
 # VS Code configuration (ignored - personal settings)
 .vscode/
 *.code-workspace
+.pypirc
+.pypirc
+
+# Deployment scripts (contain sensitive operations)
+deploy_*.sh
