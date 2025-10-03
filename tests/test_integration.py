@@ -187,15 +187,9 @@ class TestNetroClientIntegration:
         async with AiohttpClient() as http:
             client = NetroClient(http, NetroConfig())
 
-            # Test sensor
-            if NETRO_SENS_SERIAL is None:
-                pytest.skip("NETRO_SENS_SERIAL environment variable not set")
-            sensor_result = await client.get_info(NETRO_SENS_SERIAL)
+            sensor_result = await client.get_info(NETRO_SENS_SERIAL)  # type: ignore
 
-            # Test controller
-            if NETRO_CTRL_SERIAL is None:
-                pytest.skip("NETRO_CTRL_SERIAL environment variable not set")
-            controller_result = await client.get_info(NETRO_CTRL_SERIAL)
+            controller_result = await client.get_info(NETRO_CTRL_SERIAL)  # type: ignore
 
             print("=== COMPARISON SENSOR vs CONTROLLER ===")
 
@@ -245,29 +239,7 @@ class TestNetroClientIntegration:
         """Test that the API responds within a reasonable time."""
         # Act
         start_time = time.time()
-        if NETRO_SENS_SERIAL is None:
-            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
-        if NETRO_SENS_SERIAL is None:
-            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
-        if NETRO_SENS_SERIAL is None:
-            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
-        if NETRO_SENS_SERIAL is None:
-            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
-        if NETRO_SENS_SERIAL is None:
-            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
-        if NETRO_SENS_SERIAL is None:
-            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
-        if NETRO_SENS_SERIAL is None:
-            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
-        if NETRO_SENS_SERIAL is None:
-            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
-        if NETRO_SENS_SERIAL is None:
-            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
-        if NETRO_SENS_SERIAL is None:
-            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
-        if NETRO_SENS_SERIAL is None:
-            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
-        result = await client.get_info(NETRO_SENS_SERIAL)
+        result = await client.get_info(NETRO_SENS_SERIAL)  # type: ignore
         end_time = time.time()
 
         # Assert
@@ -279,21 +251,17 @@ class TestNetroClientIntegration:
     @skip_if_no_serials
     async def test_get_info_with_custom_config(self) -> None:
         """Test with custom configuration."""
-            # Arrange
+        # Arrange
         custom_config = NetroConfig(
             base_url="https://api.netrohome.com/npa/v1",  # Official URL
             default_timeout=15.0,
             extra_headers={"User-Agent": "PyNetro-Test/1.0"},
         )
-        # Test sensor
-        if NETRO_SENS_SERIAL is None:
-            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
-
         async with AiohttpClient() as http_client:
             client = NetroClient(http_client, custom_config)
 
             # Act
-            result = await client.get_info(NETRO_SENS_SERIAL)
+            result = await client.get_info(NETRO_SENS_SERIAL)  # type: ignore
 
             # Assert
             assert result["status"] == "OK"
@@ -320,10 +288,7 @@ class TestNetroClientIntegration:
         if controller_key is None:
             pytest.skip("NETRO_CTRL_SERIAL environment variable not set")
         result = await client.get_schedules(
-            controller_key,
-            start_date=start_date,
-            end_date=end_date,
-            zones=zones
+            controller_key, start_date=start_date, end_date=end_date, zones=zones
         )
 
         # Assert - Verify schedules response structure
@@ -346,9 +311,17 @@ class TestNetroClientIntegration:
                 # Check that schedule structure matches reference
                 for schedule in schedules:
                     # Validate required fields based on reference structure
-                    required_fields = ["zone", "id", "status", "source", "start_time",
-                                     "end_time", "local_date", "local_start_time",
-                                     "local_end_time"]
+                    required_fields = [
+                        "zone",
+                        "id",
+                        "status",
+                        "source",
+                        "start_time",
+                        "end_time",
+                        "local_date",
+                        "local_start_time",
+                        "local_end_time",
+                    ]
 
                     for field in required_fields:
                         assert field in schedule, f"Missing required field: {field}"
@@ -387,6 +360,7 @@ class TestNetroClientIntegration:
         assert isinstance(data, dict)
         assert "schedules" in data
 
+
 # Diagnostic tests to understand the API structure
 @pytest.mark.integration
 @pytest.mark.diagnostic
@@ -400,9 +374,7 @@ class TestNetroAPIStructure:
             config = NetroConfig()
             client = NetroClient(http_client, config)
 
-            if NETRO_SENS_SERIAL is None:
-                pytest.skip("NETRO_SENS_SERIAL environment variable not set")
-            result = await client.get_info(NETRO_SENS_SERIAL)
+            result = await client.get_info(NETRO_SENS_SERIAL)  # type: ignore
 
             # Display complete structure for analysis
             print("=== COMPLETE API RESPONSE STRUCTURE ===")
@@ -421,3 +393,61 @@ class TestNetroAPIStructure:
             # Note: To save references, use tests/generate_references.py
             print("\n💡 To generate secure reference files, use:")
             print("   python tests/generate_references.py")
+
+    @pytest.mark.postapi
+    @pytest.mark.skipif(not NETRO_CTRL_SERIAL, reason="NETRO_CTRL_SERIAL not set")
+    async def test_enable_controller(self) -> None:
+        """Integration test: enable a Netro controller (real API call)."""
+        async with AiohttpClient() as http_client:
+            config = NetroConfig()
+            client = NetroClient(http_client, config)
+            result = await client.set_status(NETRO_CTRL_SERIAL, enabled=True) # type: ignore
+
+            # Status check
+            assert result["status"] == "OK"
+
+            # Check meta fields
+            meta = result.get("meta", {})
+            assert "token_reset" in meta
+            assert "token_limit" in meta
+            assert "token_remaining" in meta
+            assert "tid" in meta
+            assert "version" in meta
+            assert "last_active" in meta
+            assert "time" in meta
+            assert isinstance(meta["token_limit"], int)
+            assert isinstance(meta["token_remaining"], int)
+            assert meta["version"] == "1.0"
+
+            # Check data field (may be empty but must exist)
+            assert "data" in result
+            assert isinstance(result["data"], dict)
+
+    @pytest.mark.postapi
+    @pytest.mark.skipif(not NETRO_CTRL_SERIAL, reason="NETRO_CTRL_SERIAL not set")
+    async def test_disable_controller(self) -> None:
+        """Integration test: disable a Netro controller (real API call)."""
+        async with AiohttpClient() as http_client:
+            config = NetroConfig()
+            client = NetroClient(http_client, config)
+            result = await client.set_status(NETRO_CTRL_SERIAL, enabled=False) # type: ignore
+
+            # Status check
+            assert result["status"] == "OK"
+
+            # Check meta fields
+            meta = result.get("meta", {})
+            assert "token_reset" in meta
+            assert "token_limit" in meta
+            assert "token_remaining" in meta
+            assert "tid" in meta
+            assert "version" in meta
+            assert "last_active" in meta
+            assert "time" in meta
+            assert isinstance(meta["token_limit"], int)
+            assert isinstance(meta["token_remaining"], int)
+            assert meta["version"] == "1.0"
+
+            # Check data field (may be empty but must exist)
+            assert "data" in result
+            assert isinstance(result["data"], dict)
