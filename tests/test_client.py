@@ -6,7 +6,18 @@ from typing import Any
 
 import pytest
 
-from pynetro.client import NetroAuthError, NetroClient, NetroConfig, NetroError
+from pynetro.client import (
+    NETRO_ERROR_CODE_EXCEED_LIMIT,
+    NETRO_ERROR_CODE_INVALID_KEY,
+    NetroClient,
+    NetroConfig,
+    NetroExceedLimit,
+    NetroException,
+    NetroInternalError,
+    NetroInvalidDevice,
+    NetroInvalidKey,
+    NetroParameterError,
+)
 from pynetro.http import AsyncHTTPResponse
 
 
@@ -131,7 +142,7 @@ class TestNetroClient:
                 "token_limit": 2000,
                 "token_remaining": 704,
                 "last_active": "2025-09-28T20:14:48",
-                "token_reset": "2025-09-29T00:00:00"
+                "token_reset": "2025-09-29T00:00:00",
             },
             "data": {
                 "device": {
@@ -143,21 +154,11 @@ class TestNetroClient:
                     "last_active": "2025-09-28T17:28:58",
                     "zone_num": 6,
                     "zones": [
-                        {
-                            "name": "Zone 1",
-                            "ith": 1,
-                            "enabled": True,
-                            "smart": "SMART"
-                        },
-                        {
-                            "name": "Zone 2",
-                            "ith": 2,
-                            "enabled": True,
-                            "smart": "SMART"
-                        }
-                    ]
+                        {"name": "Zone 1", "ith": 1, "enabled": True, "smart": "SMART"},
+                        {"name": "Zone 2", "ith": 2, "enabled": True, "smart": "SMART"},
+                    ],
                 }
-            }
+            },
         }
 
         # Configure mock response
@@ -203,7 +204,7 @@ class TestNetroClient:
                 "token_limit": 2000,
                 "token_remaining": 1999,
                 "last_active": "2023-04-03T14:30:49",
-                "token_reset": "2023-04-04T00:00:00"
+                "token_reset": "2023-04-04T00:00:00",
             },
             "data": {
                 "device": {
@@ -215,16 +216,9 @@ class TestNetroClient:
                     "sw_version": "1.3.2",
                     "last_active": "2023-04-03T14:26:06",
                     "battery_level": 0.81,
-                    "zones": [
-                        {
-                            "name": "",
-                            "ith": 1,
-                            "enabled": True,
-                            "smart": "ASSISTANT"
-                        }
-                    ]
+                    "zones": [{"name": "", "ith": 1, "enabled": True, "smart": "ASSISTANT"}],
                 }
-            }
+            },
         }
 
         # Configure mock response
@@ -272,7 +266,7 @@ class TestNetroClient:
                 "token_limit": 2000,
                 "token_remaining": 704,
                 "last_active": "2025-09-28T20:14:48",
-                "token_reset": "2025-09-29T00:00:00"
+                "token_reset": "2025-09-29T00:00:00",
             },
             "data": {
                 "sensor": {
@@ -282,9 +276,9 @@ class TestNetroClient:
                     "version": "3.1",
                     "sw_version": "3.1.3",
                     "last_active": "2025-09-28T17:03:26",
-                    "battery_level": 0.63
+                    "battery_level": 0.63,
                 }
-            }
+            },
         }
 
         # Configure mock response
@@ -312,62 +306,107 @@ class TestNetroClient:
         assert isinstance(sensor_data["battery_level"], float)
         assert 0.0 <= sensor_data["battery_level"] <= 1.0
 
-    async def test_get_info_api_error(
-        self, client: NetroClient, mock_http: MockHTTPClient
-    ) -> None:
-        """Test get_info with API error response."""
-        # Arrange
+    async def test_get_info_api_error(self, client: NetroClient, mock_http: MockHTTPClient) -> None:
+        """Test get_info with API error response (invalid key)."""
         test_key = "INVALID_KEY"
         expected_url = "https://api.netrohome.com/npa/v1/info.json"
         error_response = {
             "status": "ERROR",
-            "errors": [{"code": "AUTH_001", "message": "invalid key"}],
+            "errors": [{"code": NETRO_ERROR_CODE_INVALID_KEY, "message": "Invalid key: test"}],
         }
-
         mock_response = MockHTTPResponse(status=200, json_data=error_response)
         mock_http.set_response("GET", expected_url, mock_response)
 
-        # Act & Assert
-        with pytest.raises(NetroAuthError, match="AUTH_001: invalid key"):
+        with pytest.raises(NetroInvalidKey) as exc_info:
             await client.get_info(test_key)
+        assert exc_info.value.code == NETRO_ERROR_CODE_INVALID_KEY
+        assert "Invalid key" in exc_info.value.message
+        assert str(exc_info.value).startswith("A Netro (NPA) error occurred")
 
-    async def test_get_info_http_401(
+    async def test_get_info_exceed_limit_error(
         self, client: NetroClient, mock_http: MockHTTPClient
     ) -> None:
-        """Test get_info with HTTP 401 error."""
-        # Arrange
-        test_key = "UNAUTHORIZED_KEY"
-        expected_url = "https://api.netrohome.com/npa/v1/info.json"
-
-        mock_response = MockHTTPResponse(status=401, should_raise=True)
-        mock_http.set_response("GET", expected_url, mock_response)
-
-        # Act & Assert
-        with pytest.raises(NetroAuthError):
-            await client.get_info(test_key)
-
-    async def test_get_info_generic_api_error(
-        self, client: NetroClient, mock_http: MockHTTPClient
-    ) -> None:
-        """Test get_info with generic API error."""
-        # Arrange
+        """Test get_info with API error response (exceed limit)."""
         test_key = "ERROR_KEY"
         expected_url = "https://api.netrohome.com/npa/v1/info.json"
         error_response = {
             "status": "ERROR",
-            "errors": [{"code": "GEN_001", "message": "Generic error"}],
+            "errors": [{"code": NETRO_ERROR_CODE_EXCEED_LIMIT, "message": "Exceed limit"}],
         }
-
         mock_response = MockHTTPResponse(status=200, json_data=error_response)
         mock_http.set_response("GET", expected_url, mock_response)
 
-        # Act & Assert
-        with pytest.raises(NetroError, match="GEN_001: Generic error"):
+        with pytest.raises(NetroExceedLimit) as exc_info:
             await client.get_info(test_key)
+        assert exc_info.value.code == NETRO_ERROR_CODE_EXCEED_LIMIT
+        assert "Exceed limit" in exc_info.value.message
+
+    async def test_get_info_http_401(self, client: NetroClient, mock_http: MockHTTPClient) -> None:
+        """Test get_info with HTTP 401 error."""
+        test_key = "UNAUTHORIZED_KEY"
+        expected_url = "https://api.netrohome.com/npa/v1/info.json"
+        mock_response = MockHTTPResponse(status=401, should_raise=True)
+        mock_http.set_response("GET", expected_url, mock_response)
+
+        with pytest.raises(RuntimeError):
+            await client.get_info(test_key)
+
+    async def test_get_info_invalid_device_error(
+        self, client: NetroClient, mock_http: MockHTTPClient
+    ) -> None:
+        """Test get_info with API error response (invalid device or sensor)."""
+        test_key = "ERROR_KEY"
+        expected_url = "https://api.netrohome.com/npa/v1/info.json"
+        error_response = {
+            "status": "ERROR",
+            "errors": [{"code": 4, "message": "Invalid device or sensor"}],
+        }
+        mock_response = MockHTTPResponse(status=200, json_data=error_response)
+        mock_http.set_response("GET", expected_url, mock_response)
+
+        with pytest.raises(NetroInvalidDevice) as exc_info:
+            await client.get_info(test_key)
+        assert exc_info.value.code == 4
+        assert "Invalid device" in exc_info.value.message or "sensor" in exc_info.value.message
+
+    async def test_get_info_internal_error(
+        self, client: NetroClient, mock_http: MockHTTPClient
+    ) -> None:
+        """Test get_info with API error response (internal error)."""
+        test_key = "ERROR_KEY"
+        expected_url = "https://api.netrohome.com/npa/v1/info.json"
+        error_response = {
+            "status": "ERROR",
+            "errors": [{"code": 5, "message": "Internal error"}],
+        }
+        mock_response = MockHTTPResponse(status=200, json_data=error_response)
+        mock_http.set_response("GET", expected_url, mock_response)
+
+        with pytest.raises(NetroInternalError) as exc_info:
+            await client.get_info(test_key)
+        assert exc_info.value.code == 5
+        assert "Internal error" in exc_info.value.message
+
+    async def test_get_info_parameter_error(
+        self, client: NetroClient, mock_http: MockHTTPClient
+    ) -> None:
+        """Test get_info with API error response (parameter error)."""
+        test_key = "ERROR_KEY"
+        expected_url = "https://api.netrohome.com/npa/v1/info.json"
+        error_response = {
+            "status": "ERROR",
+            "errors": [{"code": 6, "message": "Parameter error"}],
+        }
+        mock_response = MockHTTPResponse(status=200, json_data=error_response)
+        mock_http.set_response("GET", expected_url, mock_response)
+
+        with pytest.raises(NetroParameterError) as exc_info:
+            await client.get_info(test_key)
+        assert exc_info.value.code == 6
+        assert "Parameter error" in exc_info.value.message
 
     async def test_get_info_custom_config(self, mock_http: MockHTTPClient) -> None:
         """Test get_info with custom configuration."""
-        # Arrange
         custom_config = NetroConfig(
             base_url="https://custom.api.com/v2",
             default_timeout=30.0,
@@ -382,12 +421,38 @@ class TestNetroClient:
         mock_response = MockHTTPResponse(status=200, json_data=expected_response)
         mock_http.set_response("GET", expected_url, mock_response)
 
-        # Act
         result = await client.get_info(test_key)
-
-        # Assert
         assert result == expected_response
         call = mock_http.get_calls[0]
         assert call["url"] == expected_url
         assert call["kwargs"]["timeout"] == 30.0
         assert call["kwargs"]["headers"]["X-Custom"] == "test"
+
+    async def test_handle_invalid_key_error(
+        self,
+        client: NetroClient,
+    ) -> None:
+        """Test _handle for invalid key error."""
+        response_data = {
+            "status": "ERROR",
+            "errors": [{"code": NETRO_ERROR_CODE_INVALID_KEY, "message": "Invalid key: test"}],
+        }
+        mock_response = MockHTTPResponse(status=200, json_data=response_data)
+        with pytest.raises(NetroInvalidKey) as exc_info:
+            await client._handle(mock_response) # pylint: disable=W0212
+        assert exc_info.value.code == NETRO_ERROR_CODE_INVALID_KEY
+        assert isinstance(exc_info.value.code, int)
+        assert "Invalid key" in exc_info.value.message
+        assert str(exc_info.value).startswith("A Netro (NPA) error occurred")
+
+    async def test_handle_other_business_error(
+        self, client: NetroClient
+    ) -> None:
+        """Test _handle for other business error."""
+        response_data = {"status": "ERROR", "errors": [{"code": 3, "message": "Exceed limit"}]}
+        mock_response = MockHTTPResponse(status=200, json_data=response_data)
+        with pytest.raises(NetroException) as exc_info:
+            await client._handle(mock_response) # pylint: disable=W0212
+        assert exc_info.value.code == 3
+        assert isinstance(exc_info.value.code, int)
+        assert "Exceed limit" in exc_info.value.message

@@ -1,5 +1,8 @@
 """Async client for Netro Public API v1.
 
+WARNING: Your Netro API key (device serial) gives full access to your devices.
+Keep it secret and do not share it.
+
 Provides NetroClient and related classes for interacting with Netro Home's NPA v1 endpoints.
 """
 
@@ -13,15 +16,47 @@ from typing import Any
 
 from .http import AsyncHTTPClient, AsyncHTTPResponse
 
+# Netro error codes (from official documentation)
+NETRO_ERROR_CODE_INVALID_KEY = 1
+NETRO_ERROR_CODE_EXCEED_LIMIT = 3
+NETRO_ERROR_CODE_INVALID_DEVICE = 4
+NETRO_ERROR_CODE_INTERNAL_ERROR = 5
+NETRO_ERROR_CODE_PARAMETER_ERROR = 6
 
 # ---------- Exceptions ----------
-class NetroError(Exception):
-    """Generic Netro client error."""
+class NetroException(Exception):
+    """Netro business error (status == 'ERROR')."""
+    def __init__(self, code: int | None, message: str) -> None:
+        """Initialize NetroException with error code and message.
 
+        Args:
+            code: The error code returned by the API, or None.
+            message: The error message describing the issue.
+        """
+        self.code = code
+        self.message = message
+        super().__init__(f"{code}: {message}" if code is not None else message)
 
-class NetroAuthError(NetroError):
-    """401/403 or API 'ERROR' with auth meaning."""
+    def __str__(self) -> str:
+        """Return a literal error message related to the current exception."""
+        return (
+            f"A Netro (NPA) error occurred -- error code #{self.code} -> {self.message}"
+        )
 
+class NetroInvalidKey(NetroException):
+    """Netro error: invalid API key."""
+
+class NetroExceedLimit(NetroException):
+    """Netro error: exceed limit."""
+
+class NetroInvalidDevice(NetroException):
+    """Netro error: invalid device or sensor."""
+
+class NetroInternalError(NetroException):
+    """Netro error: internal error."""
+
+class NetroParameterError(NetroException):
+    """Netro error: parameter error."""
 
 # ---------- Config ----------
 @dataclass(slots=True)
@@ -40,7 +75,6 @@ class NetroConfig:
     base_url: str = "https://api.netrohome.com/npa/v1"
     default_timeout: float = 10.0
     extra_headers: Mapping[str, str] | None = None
-
 
 # ---------- Client ----------
 class NetroClient:
@@ -62,68 +96,70 @@ class NetroClient:
 
     # ---- utils ----
     def _headers_get(self) -> dict[str, str]:
+        """Return headers for GET requests."""
         h: dict[str, str] = {"Accept": "application/json"}
         if self._cfg.extra_headers:
             h.update(self._cfg.extra_headers)
         return h
 
     def _headers_post(self) -> dict[str, str]:
+        """Return headers for POST requests."""
         h = self._headers_get()
         h.setdefault("Content-Type", "application/json")
         return h
 
     async def _handle(self, resp: AsyncHTTPResponse) -> dict[str, Any]:
         """Handle HTTP + NPA JSON envelope."""
-        # First, try to read JSON to see if it's a Netro business error
         try:
             data = await resp.json()
-        except Exception as exc:
-            # If we can't read JSON, it's probably a real HTTP error
-            if resp.status in (401, 403):
-                msg = f"HTTP {resp.status}: Authentication failed"
-                raise NetroAuthError(msg) from exc
-            resp.raise_for_status()  # Raise appropriate HTTP exception
-            msg = f"HTTP {resp.status}: Unable to parse JSON response"
-            raise NetroError(msg) from exc
+        except Exception:
+            resp.raise_for_status()
+            raise
 
-        # NPA returns an envelope {"status": "OK"/"ERROR", "data": {...}, "meta": {...}}
         status = data.get("status")
 
         if status == "OK":
-            # All good, return complete response
             return data
         elif status == "ERROR":
-            # Netro business error, analyze details
-            errs = data.get("errors") or []
+            errs = data.get("errors")
             if isinstance(errs, list) and errs:
-                # Build error message from errors
-                messages = []
-                for err in errs:
-                    if isinstance(err, dict):
-                        code = err.get("code", "")
-                        message = err.get("message", "")
-                        if code and message:
-                            messages.append(f"{code}: {message}")
-                        elif message:
-                            messages.append(message)
-
-                error_msg = "; ".join(messages) if messages else "API ERROR"
-
-                # Detect authentication errors
-                if any("invalid key" in msg.lower() for msg in messages):
-                    raise NetroAuthError(error_msg)
-                else:
-                    raise NetroError(error_msg)
+                err = errs[0]
+                code = err.get("code")
+                message = err.get("message", "")
+                if code == NETRO_ERROR_CODE_INVALID_KEY or "invalid key" in message.lower():
+                    raise NetroInvalidKey(code, message)
+                if code == NETRO_ERROR_CODE_EXCEED_LIMIT:
+                    raise NetroExceedLimit(code, message)
+                if code == NETRO_ERROR_CODE_INVALID_DEVICE:
+                    raise NetroInvalidDevice(code, message)
+                if code == NETRO_ERROR_CODE_INTERNAL_ERROR:
+                    raise NetroInternalError(code, message)
+                if code == NETRO_ERROR_CODE_PARAMETER_ERROR:
+                    raise NetroParameterError(code, message)
+                raise NetroException(code, message)
             else:
-                raise NetroError("API returned ERROR status without details")
+                raise NetroException(None, "API returned ERROR status without details")
         else:
-            # Unexpected or missing status
-            if resp.status in (401, 403):
-                msg = f"HTTP {resp.status}: Authentication failed"
-                raise NetroAuthError(msg)
-            resp.raise_for_status()  # For other HTTP error codes
+            resp.raise_for_status()
             msg = f"Unexpected API response status: {status}"
-            raise NetroError(msg)
+            raise ValueError(msg)
+
+    def get_rate_limit_info(self, response: dict[str, Any]) -> dict[str, Any]:
+        """Extract rate limit info from API response."""
+        meta = response.get("meta", {})
+        return {
+            "token_limit": meta.get("token_limit"),
+            "token_remaining": meta.get("token_remaining"),
+            "token_reset": meta.get("token_reset"),
+        }
+
+    def get_transaction_id(self, response: dict[str, Any]) -> str | None:
+        """Get transaction ID from API response."""
+        return response.get("meta", {}).get("tid")
+
+    def get_api_version(self, response: dict[str, Any]) -> str | None:
+        """Get API version from response."""
+        return response.get("meta", {}).get("version")
 
     # ---------- Device APIs ----------
     # GET /npa/v1/info.json?key=ABCDEFG
@@ -140,7 +176,7 @@ class NetroClient:
         dict[str, Any]
             The full JSON envelope returned by the API.
         """
-        params = {"key": key}
+        params: dict[str, Any] = {"key": key}
         url = f"{self._base}/info.json"
         async with self._http.get(
             url, headers=self._headers_get(), params=params, timeout=self._cfg.default_timeout

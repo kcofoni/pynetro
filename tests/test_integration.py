@@ -15,7 +15,11 @@ from pathlib import Path
 
 import pytest
 
-from pynetro.client import NetroAuthError, NetroClient, NetroConfig, NetroError
+from pynetro.client import (
+    NetroClient,
+    NetroConfig,
+    NetroInvalidKey,
+)
 
 from .aiohttp_client import AiohttpClient
 
@@ -60,6 +64,8 @@ class TestNetroClientIntegration:
         """Test get_info with Netro sensor device and validate against reference structure."""
         # Arrange - Sensor serial from environment
         sensor_key = NETRO_SENS_SERIAL
+        if sensor_key is None:
+            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
 
         # Load reference structure
         reference_file = Path(__file__).parent / "reference_data" / "sensor_response.json"
@@ -120,6 +126,8 @@ class TestNetroClientIntegration:
                 reference_data = json.load(f)
 
         # Act
+        if controller_key is None:
+            pytest.skip("NETRO_CTRL_SERIAL environment variable not set")
         result = await client.get_info(controller_key)
 
         # Assert - Verify controller response structure
@@ -180,9 +188,13 @@ class TestNetroClientIntegration:
             client = NetroClient(http, NetroConfig())
 
             # Test sensor
+            if NETRO_SENS_SERIAL is None:
+                pytest.skip("NETRO_SENS_SERIAL environment variable not set")
             sensor_result = await client.get_info(NETRO_SENS_SERIAL)
 
             # Test controller
+            if NETRO_CTRL_SERIAL is None:
+                pytest.skip("NETRO_CTRL_SERIAL environment variable not set")
             controller_result = await client.get_info(NETRO_CTRL_SERIAL)
 
             print("=== COMPARISON SENSOR vs CONTROLLER ===")
@@ -224,17 +236,37 @@ class TestNetroClientIntegration:
         """Test get_info with invalid API key."""
         invalid_key = "INVALID_KEY_123"
 
-        # Act & Assert
-        with pytest.raises((NetroAuthError, NetroError)) as exc_info:
+        with pytest.raises(NetroInvalidKey) as exc_info:
             await client.get_info(invalid_key)
-
-        print(f"Error received with invalid key: {exc_info.value}")
+        assert "Invalid key" in str(exc_info.value)
 
     @skip_if_no_serials
     async def test_get_info_response_time(self, client: NetroClient) -> None:
         """Test that the API responds within a reasonable time."""
         # Act
         start_time = time.time()
+        if NETRO_SENS_SERIAL is None:
+            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
+        if NETRO_SENS_SERIAL is None:
+            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
+        if NETRO_SENS_SERIAL is None:
+            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
+        if NETRO_SENS_SERIAL is None:
+            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
+        if NETRO_SENS_SERIAL is None:
+            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
+        if NETRO_SENS_SERIAL is None:
+            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
+        if NETRO_SENS_SERIAL is None:
+            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
+        if NETRO_SENS_SERIAL is None:
+            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
+        if NETRO_SENS_SERIAL is None:
+            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
+        if NETRO_SENS_SERIAL is None:
+            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
+        if NETRO_SENS_SERIAL is None:
+            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
         result = await client.get_info(NETRO_SENS_SERIAL)
         end_time = time.time()
 
@@ -253,6 +285,9 @@ class TestNetroClientIntegration:
             default_timeout=15.0,
             extra_headers={"User-Agent": "PyNetro-Test/1.0"},
         )
+        # Test sensor
+        if NETRO_SENS_SERIAL is None:
+            pytest.skip("NETRO_SENS_SERIAL environment variable not set")
 
         async with AiohttpClient() as http_client:
             client = NetroClient(http_client, custom_config)
@@ -282,6 +317,8 @@ class TestNetroClientIntegration:
                 reference_data = json.load(f)
 
         # Act
+        if controller_key is None:
+            pytest.skip("NETRO_CTRL_SERIAL environment variable not set")
         result = await client.get_schedules(
             controller_key,
             start_date=start_date,
@@ -350,7 +387,6 @@ class TestNetroClientIntegration:
         assert isinstance(data, dict)
         assert "schedules" in data
 
-
 # Diagnostic tests to understand the API structure
 @pytest.mark.integration
 @pytest.mark.diagnostic
@@ -364,6 +400,8 @@ class TestNetroAPIStructure:
             config = NetroConfig()
             client = NetroClient(http_client, config)
 
+            if NETRO_SENS_SERIAL is None:
+                pytest.skip("NETRO_SENS_SERIAL environment variable not set")
             result = await client.get_info(NETRO_SENS_SERIAL)
 
             # Display complete structure for analysis
