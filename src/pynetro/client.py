@@ -10,6 +10,7 @@ Provides NetroClient and related classes for interacting with Netro Home's NPA v
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -22,6 +23,10 @@ NETRO_ERROR_CODE_EXCEED_LIMIT = 3
 NETRO_ERROR_CODE_INVALID_DEVICE = 4
 NETRO_ERROR_CODE_INTERNAL_ERROR = 5
 NETRO_ERROR_CODE_PARAMETER_ERROR = 6
+
+def mask(s: str) -> str:
+    """Mask a key/serial in logs (keep first 2/last 2 characters)."""
+    return re.sub(r"(?<=..).*(?=..)", "****", s) if s and len(s) > 4 else "****"
 
 # ---------- Exceptions ----------
 class NetroException(Exception):

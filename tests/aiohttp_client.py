@@ -65,7 +65,7 @@ class AiohttpClient:
         # Adapt parameters for aiohttp
         aiohttp_kwargs = self._adapt_kwargs(kwargs)
         response = self._session.get(url, **aiohttp_kwargs)
-        return AiohttpResponseContextManager(response)
+        return AiohttpResponseContextManager(response) # type: ignore
 
     def post(self, url: str, **kwargs) -> AsyncHTTPResponse:
         """Make POST request."""
@@ -74,7 +74,7 @@ class AiohttpClient:
 
         aiohttp_kwargs = self._adapt_kwargs(kwargs)
         response = self._session.post(url, **aiohttp_kwargs)
-        return AiohttpResponseContextManager(response)
+        return AiohttpResponseContextManager(response) # type: ignore
 
     def put(self, url: str, **kwargs) -> AsyncHTTPResponse:
         """Make PUT request."""
@@ -83,7 +83,7 @@ class AiohttpClient:
 
         aiohttp_kwargs = self._adapt_kwargs(kwargs)
         response = self._session.put(url, **aiohttp_kwargs)
-        return AiohttpResponseContextManager(response)
+        return AiohttpResponseContextManager(response) # type: ignore
 
     def delete(self, url: str, **kwargs) -> AsyncHTTPResponse:
         """Make DELETE request."""
@@ -92,7 +92,7 @@ class AiohttpClient:
 
         aiohttp_kwargs = self._adapt_kwargs(kwargs)
         response = self._session.delete(url, **aiohttp_kwargs)
-        return AiohttpResponseContextManager(response)
+        return AiohttpResponseContextManager(response) # type: ignore
 
     def _adapt_kwargs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
         """Adapt generic HTTP kwargs to aiohttp format."""
