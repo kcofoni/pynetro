@@ -30,3 +30,6 @@ htmlcov/
 
 # Deployment scripts (contain sensitive operations)
 deploy_*.sh
+
+# IDE temporary files
+*.swp

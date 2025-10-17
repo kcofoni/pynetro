@@ -77,9 +77,18 @@ class NetroConfig:
     extra_headers : Optional[Mapping[str, str]]
         Additional headers to include in requests.
     """
-    base_url: str = "https://api.netrohome.com/npa/v1"
+    base_url: str = None
     default_timeout: float = 10.0
     extra_headers: Mapping[str, str] | None = None
+
+    # Modifiable class attribute (no type annotation)
+    default_base_url = "https://api.netrohome.com/npa/v1"
+
+    def __post_init__(self):
+        """Post-initialization hook to set default base_url if not provided."""
+        # If base_url is not provided, use the class attribute value
+        if self.base_url is None:
+            self.base_url = type(self).default_base_url
 
 # ---------- Client ----------
 class NetroClient:
