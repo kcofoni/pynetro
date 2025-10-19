@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.13.7
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.13.7"
+
+    - name: Configure pip cache directory
+      run: echo "PIP_CACHE_DIR=${{ runner.temp }}/pip-cache" >> $GITHUB_ENV
+
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.PIP_CACHE_DIR }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml', '**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      env:
+        PIP_CACHE_DIR: ${{ env.PIP_CACHE_DIR }}
+      run: |
+        python -m pip install --upgrade pip
+        # installer les dépendances de test ; ajuste si tu as un fichier requirements
+        python -m pip install pytest pytest-asyncio pytest-cov coverage codecov
+
+    - name: Set PYTHONPATH
+      run: echo "PYTHONPATH=$(pwd)/src" >> $GITHUB_ENV
+
+    - name: Run tests with coverage
+      run: |
+        python -m pytest tests/test_client.py -v --cov=pynetro --cov-report=xml:coverage.xml
+        echo "=== Coverage Summary ==="
+        python -m coverage report --show-missing
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+        flags: unittests
+        name: codecov-umbrella

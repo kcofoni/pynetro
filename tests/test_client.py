@@ -591,3 +591,430 @@ class TestNetroClient:
     def test_mask_short_or_empty(self, value, expected):
         """Test mask() behavior for short, empty or None inputs (should return '****')."""
         assert mask(value) == expected
+
+    async def test_set_status_enable(self, client: NetroClient, mock_http: MockHTTPClient) -> None:
+        """POST set_status -> enabled True should send status=1 and return parsed response."""
+        test_key = "TESTKEY-SET-1"
+        expected_url = f"{client._base}/set_status.json"  # pylint: disable=W0212
+
+        expected_response = {"status": "OK", "meta": {}, "data": {}}
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("POST", expected_url, mock_response)
+
+        result = await client.set_status(test_key, enabled=True)
+
+        assert result == expected_response
+
+        # Basic response structure assertions (meta and data shape)
+        assert isinstance(result, dict)
+        assert result.get("status") == "OK"
+        assert "meta" in result and isinstance(result["meta"], dict)
+        assert "data" in result and isinstance(result["data"], dict)
+
+        # ensure one POST call was made
+        post_calls = getattr(mock_http, "post_calls", None)
+        assert post_calls and len(post_calls) == 1, "expected one POST call"
+        call = post_calls[0]
+
+        assert call["url"] == expected_url
+        assert call["kwargs"]["json"] == {"key": test_key, "status": 1}
+        assert "headers" in call["kwargs"]
+        assert call["kwargs"]["headers"].get("Content-Type") == "application/json"
+        assert call["kwargs"]["timeout"] == client._cfg.default_timeout  # pylint: disable=W0212
+
+    async def test_set_status_disable(self, client: NetroClient, mock_http: MockHTTPClient) -> None:
+        """POST set_status -> enabled False should send status=0."""
+        test_key = "TESTKEY-SET-0"
+        expected_url = f"{client._base}/set_status.json"  # pylint: disable=W0212
+
+        expected_response = {"status": "OK", "meta": {}, "data": {}}
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("POST", expected_url, mock_response)
+
+        result = await client.set_status(test_key, enabled=False)
+
+        assert result == expected_response
+
+        # Basic response structure assertions
+        assert isinstance(result, dict)
+        assert result.get("status") == "OK"
+        assert "meta" in result and isinstance(result["meta"], dict)
+        assert "data" in result and isinstance(result["data"], dict)
+
+        post_calls = getattr(mock_http, "post_calls", None)
+        assert post_calls and len(post_calls) == 1
+        call = post_calls[0]
+
+        assert call["url"] == expected_url
+        assert call["kwargs"]["json"] == {"key": test_key, "status": 0}
+
+    async def test_set_status_no_change(self, client: NetroClient, mock_http: MockHTTPClient) -> None:
+        """POST set_status with enabled=None should send only the key (no status field)."""
+        test_key = "TESTKEY-SET-NONE"
+        expected_url = f"{client._base}/set_status.json"  # pylint: disable=W0212
+
+        expected_response = {"status": "OK", "meta": {}, "data": {}}
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("POST", expected_url, mock_response)
+
+        result = await client.set_status(test_key, enabled=None)
+
+        assert result == expected_response
+
+        # Basic response structure assertions
+        assert isinstance(result, dict)
+        assert result.get("status") == "OK"
+        assert "meta" in result and isinstance(result["meta"], dict)
+        assert "data" in result and isinstance(result["data"], dict)
+
+        post_calls = getattr(mock_http, "post_calls", None)
+        assert post_calls and len(post_calls) == 1
+        call = post_calls[0]
+
+        assert call["url"] == expected_url
+        assert call["kwargs"]["json"] == {"key": test_key}
+
+    async def test_no_water_default_days(self, client: NetroClient, mock_http: MockHTTPClient) -> None:
+        """POST no_water -> default days (1) should be sent and response parsed."""
+        test_key = "TESTKEY-NO-WATER-DEF"
+        expected_url = f"{client._base}/no_water.json"  # pylint: disable=W0212
+
+        expected_response = {"status": "OK", "meta": {}, "data": {}}
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("POST", expected_url, mock_response)
+
+        result = await client.no_water(test_key)
+
+        assert result == expected_response
+        post_calls = getattr(mock_http, "post_calls", None)
+        assert post_calls and len(post_calls) == 1
+        call = post_calls[0]
+
+        assert call["url"] == expected_url
+        assert call["kwargs"]["json"] == {"key": test_key, "days": 1}
+        assert call["kwargs"]["timeout"] == client._cfg.default_timeout  # pylint: disable=W0212
+
+    async def test_no_water_custom_days(self, client: NetroClient, mock_http: MockHTTPClient) -> None:
+        """POST no_water -> custom days should be coerced to int and sent."""
+        test_key = "TESTKEY-NO-WATER-3"
+        expected_url = f"{client._base}/no_water.json"  # pylint: disable=W0212
+        days = 3
+
+        expected_response = {"status": "OK", "meta": {}, "data": {}}
+
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("POST", expected_url, mock_response)
+
+        result = await client.no_water(test_key, days=days)
+
+        assert result == expected_response
+        post_calls = getattr(mock_http, "post_calls", None)
+        assert post_calls and len(post_calls) == 1
+        call = post_calls[0]
+
+        assert call["url"] == expected_url
+        assert call["kwargs"]["json"] == {"key": test_key, "days": int(days)}
+        assert call["kwargs"]["timeout"] == client._cfg.default_timeout  # pylint: disable=W0212
+
+    async def test_report_weather_all_params(
+        self, client: NetroClient, mock_http: MockHTTPClient
+    ) -> None:
+        """POST report_weather with all optional parameters set."""
+        test_key = "TESTKEY-REPORT"
+        expected_url = f"{client._base}/report_weather.json"  # pylint: disable=W0212
+
+        date = "2025-10-20"
+        params = {
+            "condition": 2,
+            "rain": 12.5,
+            "rain_prob": 80,
+            "temp": 15.3,
+            "t_min": 10.0,
+            "t_max": 20.0,
+            "t_dew": 8.5,
+            "wind_speed": 3.2,
+            "humidity": 60,
+            "pressure": 1013.2,
+        }
+
+        expected_body = {
+            "key": test_key,
+            "date": date,
+            "condition": int(params["condition"]),
+            "rain": float(params["rain"]),
+            "rain_prob": int(params["rain_prob"]),
+            "temp": float(params["temp"]),
+            "t_min": float(params["t_min"]),
+            "t_max": float(params["t_max"]),
+            "t_dew": float(params["t_dew"]),
+            "wind_speed": float(params["wind_speed"]),
+            "humidity": int(params["humidity"]),
+            "pressure": float(params["pressure"]),
+        }
+
+        expected_response = {"status": "OK", "meta": {}, "data": {}}
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("POST", expected_url, mock_response)
+
+        # Act
+        result = await client.report_weather(
+            test_key,
+            date=date,
+            condition=params["condition"],
+            rain=params["rain"],
+            rain_prob=params["rain_prob"],
+            temp=params["temp"],
+            t_min=params["t_min"],
+            t_max=params["t_max"],
+            t_dew=params["t_dew"],
+            wind_speed=params["wind_speed"],
+            humidity=params["humidity"],
+            pressure=params["pressure"],
+        )
+
+        # Assert
+        assert result == expected_response
+
+        post_calls = getattr(mock_http, "post_calls", None)
+        assert post_calls and len(post_calls) == 1
+        call = post_calls[0]
+
+        assert call["url"] == expected_url
+        assert call["kwargs"]["json"] == expected_body
+        assert call["kwargs"]["headers"].get("Content-Type") == "application/json"
+        assert call["kwargs"]["timeout"] == client._cfg.default_timeout  # pylint: disable=W0212
+
+    async def test_report_weather_invalid_condition(self, client: NetroClient, mock_http: MockHTTPClient) -> None:
+        """report_weather should raise ValueError for invalid condition values."""
+        test_key = "TESTKEY-REPORT-INVALID"
+        # invalid condition (not in 0..4)
+        with pytest.raises(ValueError) as excinfo:
+            await client.report_weather(test_key, date="2025-10-20", condition=9)
+        # Assert on exception message content (be permissive / use substring)
+        msg = str(excinfo.value)
+        assert "condition" in msg and ("0" in msg or "0..4" in msg or "one of" in msg)
+
+        # ensure no HTTP request was sent
+        assert not getattr(mock_http, "post_calls", None)
+
+    async def test_report_weather_invalid_rain_prob(self, client: NetroClient, mock_http: MockHTTPClient) -> None:
+        """report_weather should raise ValueError when rain_prob is outside [0,100]."""
+        test_key = "TESTKEY-REPORT-INVALID-RP"
+        # too large
+        with pytest.raises(ValueError) as excinfo1:
+            await client.report_weather(test_key, date="2025-10-20", rain_prob=150)
+        assert "rain_prob" in str(excinfo1.value) and "0" in str(excinfo1.value)
+
+        # too small
+        with pytest.raises(ValueError) as excinfo2:
+            await client.report_weather(test_key, date="2025-10-20", rain_prob=-1)
+        assert "rain_prob" in str(excinfo2.value) and "0" in str(excinfo2.value)
+
+        # ensure no HTTP request was sent
+        assert not getattr(mock_http, "post_calls", None)
+
+    async def test_get_sensor_data(
+        self,
+        client: NetroClient,
+        mock_http: MockHTTPClient,
+        need_sensor_data_reference,  # assure la présence (copie du template si nécessaire)  : pylint: disable=W0613
+    ) -> None:
+        """GET get_sensor_data using tests/reference_data/sensor_response_data.json."""
+        test_key = "TESTKEY-SENSOR-REF"
+        expected_url = f"{client._base}/sensor_data.json"  # pylint: disable=W0212
+
+        # Load reference response (fixture ensure_reference gère l'existence)
+        ref_file = Path(__file__).parent / "reference_data" / "sensor_response_data.json"
+        if not ref_file.exists():
+            pytest.skip(f"Reference file missing: {ref_file}")
+        with ref_file.open(encoding="utf-8") as fh:
+            expected_response = json.load(fh)
+
+        # Configure mock HTTP to return the reference response
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("GET", expected_url, mock_response)
+
+        # Act - call with a date range
+        start_date = "2025-10-10"
+        end_date = "2025-10-12"
+        result = await client.get_sensor_data(test_key, start_date=start_date, end_date=end_date)
+
+        # Assert - response and request correctness
+        assert result == expected_response
+        assert getattr(mock_http, "get_calls", None) and len(mock_http.get_calls) == 1
+        call = mock_http.get_calls[0]
+        assert call["url"] == expected_url
+        assert call["kwargs"]["params"] == {"key": test_key, "start_date": start_date, "end_date": end_date}
+        assert "headers" in call["kwargs"] and call["kwargs"]["headers"]["Accept"] == "application/json"
+        assert call["kwargs"]["timeout"] == client._cfg.default_timeout  # pylint: disable=W0212
+
+    async def test_set_moisture_with_zones(self, client: NetroClient, mock_http: MockHTTPClient) -> None:
+        """POST set_moisture -> send moisture percent and zones, parse response."""
+        test_key = "TESTKEY-MOISTURE"
+        expected_url = f"{client._base}/set_moisture.json"  # pylint: disable=W0212
+
+        # use an example moisture % and multiple zones
+        moisture = 45
+        zones = [1, 2]
+
+        expected_response = {"status": "OK", "meta": {}, "data": {}}
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("POST", expected_url, mock_response)
+
+        # Act
+        result = await client.set_moisture(test_key, moisture=moisture, zones=zones)
+
+        # Assert
+        assert result == expected_response
+
+        post_calls = getattr(mock_http, "post_calls", None)
+        assert post_calls and len(post_calls) == 1
+        call = post_calls[0]
+
+        assert call["url"] == expected_url
+        assert call["kwargs"]["json"] == {"key": test_key, "moisture": int(moisture), "zones": list(zones)}
+        assert call["kwargs"]["headers"].get("Content-Type") == "application/json"
+        assert call["kwargs"]["timeout"] == client._cfg.default_timeout  # pylint: disable=W0212
+
+    async def test_water_with_delay_and_zones(self, client: NetroClient, mock_http: MockHTTPClient) -> None:
+        """POST water with duration, delay and zones should send correct body and return schedules."""
+        test_key = "TESTKEY-WATER-1"
+        expected_url = f"{client._base}/water.json"  # pylint: disable=W0212
+
+        duration = 10
+        delay = 60
+        zones = [1]
+
+        expected_response = {
+            "status": "OK",
+            "meta": {
+                "token_reset": "2025-10-20T00:00:00",
+                "time": "2025-10-19T22:43:23",
+                "version": "1.0",
+                "token_limit": 2000,
+                "token_remaining": 319,
+                "tid": "1760913803_kHUP",
+                "last_active": "2025-10-19T22:43:23",
+            },
+            "data": {
+                "schedules": [
+                    {
+                        "zone": 1,
+                        "end_time": "2025-10-19T23:53:23",
+                        "local_end_time": "01:53:23",
+                        "id": 486321588,
+                        "source": "MANUAL",
+                        "start_time": "2025-10-19T23:43:23",
+                        "local_date": "2025-10-20",
+                        "status": "VALID",
+                        "local_start_time": "01:43:23",
+                    }
+                ]
+            },
+        }
+
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("POST", expected_url, mock_response)
+
+        result = await client.water(test_key, duration_minutes=duration, zones=zones, delay_minutes=delay)
+
+        assert result == expected_response
+
+        post_calls = getattr(mock_http, "post_calls", None)
+        assert post_calls and len(post_calls) == 1
+        call = post_calls[0]
+
+        assert call["url"] == expected_url
+        assert call["kwargs"]["json"] == {"key": test_key, "duration": int(duration), "zones": list(zones), "delay": int(delay)}
+        assert call["kwargs"]["headers"].get("Content-Type") == "application/json"
+        assert call["kwargs"]["timeout"] == client._cfg.default_timeout  # pylint: disable=W0212
+
+        # Verify schedules present
+        data = result.get("data", {})
+        sched_key = "schedules" if "schedules" in data else next((k for k in data.keys() if "schedule" in k), None)
+        assert sched_key is not None, "Response should contain schedules"
+        schedules = data[sched_key]
+        assert isinstance(schedules, list) and len(schedules) > 0
+
+    async def test_water_with_start_time_and_zones(self, client: NetroClient, mock_http: MockHTTPClient) -> None:
+        """POST water with explicit start_time and zones should send start_time and return schedules."""
+        test_key = "TESTKEY-WATER-2"
+        expected_url = f"{client._base}/water.json"  # pylint: disable=W0212
+
+        duration = 12
+        start_time = "2025-10-25 08:00"
+        zones = [1]
+
+        expected_response = {
+            "status": "OK",
+            "meta": {
+                "token_reset": "2025-10-20T00:00:00",
+                "time": "2025-10-19T22:42:55",
+                "version": "1.0",
+                "token_limit": 2000,
+                "token_remaining": 320,
+                "tid": "1760913775_IHhB",
+                "last_active": "2025-10-19T22:42:55",
+            },
+            "data": {
+                "schedules": [
+                    {
+                        "zone": 1,
+                        "end_time": "2025-10-25T08:12:00",
+                        "local_end_time": "10:12:00",
+                        "id": 486321577,
+                        "source": "MANUAL",
+                        "start_time": "2025-10-25T08:00:00",
+                        "local_date": "2025-10-25",
+                        "status": "VALID",
+                        "local_start_time": "10:00:00",
+                    }
+                ]
+            },
+        }
+
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("POST", expected_url, mock_response)
+
+        result = await client.water(test_key, duration_minutes=duration, zones=zones, start_time=start_time)
+
+        assert result == expected_response
+
+        post_calls = getattr(mock_http, "post_calls", None)
+        assert post_calls and len(post_calls) == 1
+        call = post_calls[0]
+
+        assert call["url"] == expected_url
+        assert call["kwargs"]["json"] == {"key": test_key, "duration": int(duration), "zones": list(zones), "start_time": start_time}
+        assert call["kwargs"]["headers"].get("Content-Type") == "application/json"
+        assert call["kwargs"]["timeout"] == client._cfg.default_timeout  # pylint: disable=W0212
+
+        # Verify schedules present
+        data = result.get("data", {})
+        sched_key = "schedules" if "schedules" in data else next((k for k in data.keys() if "schedule" in k), None)
+        assert sched_key is not None, "Response should contain schedules"
+        schedules = data[sched_key]
+        assert isinstance(schedules, list) and len(schedules) > 0
+
+    async def test_stop_water(self, client: NetroClient, mock_http: MockHTTPClient) -> None:
+        """POST stop_water should send the key and return parsed response."""
+        test_key = "TESTKEY-STOP"
+        expected_url = f"{client._base}/stop_water.json"  # pylint: disable=W0212
+
+        expected_response = {"status": "OK", "meta": {}, "data": {}}
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("POST", expected_url, mock_response)
+
+        # Act
+        result = await client.stop_water(test_key)
+
+        # Assert
+        assert result == expected_response
+        post_calls = getattr(mock_http, "post_calls", None)
+        assert post_calls and len(post_calls) == 1
+        call = post_calls[0]
+
+        assert call["url"] == expected_url
+        assert call["kwargs"]["json"] == {"key": test_key}
+        assert call["kwargs"]["headers"].get("Content-Type") == "application/json"
+        assert call["kwargs"]["timeout"] == client._cfg.default_timeout  # pylint: disable=W0212

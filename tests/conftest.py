@@ -195,3 +195,13 @@ def need_events_reference():  # noqa: D103 # pylint: disable=C0116
         template_name="sprite_response_events_template.json",
         copy_if_template=True,
     )
+
+
+@pytest.fixture
+def need_sensor_data_reference():  # pylint: disable=C0116
+    """Ensure sensor_response_data.json exists (copy from template if present)."""
+    ensure_reference(
+        "sensor_response_data.json",
+        template_name="sensor_response_data_template.json",
+        copy_if_template=True,
+    )
