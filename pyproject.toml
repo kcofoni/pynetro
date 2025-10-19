@@ -62,6 +62,7 @@ ignore = [
     "TRY003", # Avoid specifying long messages outside the exception class (to be fixed gradually)
     "EM101", # Exception must not use a string literal (to be fixed gradually)
     "PIE790", # Unnecessary ellipsis constant (appropriate in Protocols)
+    "E501",  # ignore line length checks (handled by Black)
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -72,4 +73,5 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.pylint."messages control"]
-disable = "unnecessary-ellipsis"  # W2301 - Appropriate in Protocols
+# Disable some pylint messages; include line-too-long to silence C0301
+disable = "unnecessary-ellipsis,line-too-long"  # W2301 / C0301

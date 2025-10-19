@@ -1,0 +1,82 @@
+{
+  "status" : "OK",
+  "meta" : {
+    "token_reset" : "2025-09-30T00:00:00",
+    "time" : "2025-09-29T16:59:48",
+    "version" : "1.0",
+    "token_limit" : 2000,
+    "token_remaining" : 1017,
+    "tid" : "1759165188_BGRQ",
+    "last_active" : "2025-09-29T16:59:48"
+  },
+  "data" : {
+    "schedules" : [
+      {
+        "zone" : 1,
+        "end_time" : "2025-09-30T20:19:00",
+        "local_end_time" : "22:19:00",
+        "id" : 478727617,
+        "source" : "SMART",
+        "start_time" : "2025-09-30T20:12:00",
+        "local_date" : "2025-09-30",
+        "status" : "VALID",
+        "local_start_time" : "22:12:00"
+      },
+      {
+        "zone" : 3,
+        "end_time" : "2025-09-30T20:12:00",
+        "local_end_time" : "22:12:00",
+        "id" : 478725262,
+        "source" : "SMART",
+        "start_time" : "2025-09-30T20:00:00",
+        "local_date" : "2025-09-30",
+        "status" : "VALID",
+        "local_start_time" : "22:00:00"
+      },
+      {
+        "zone" : 1,
+        "end_time" : "2025-09-30T05:49:00",
+        "local_end_time" : "07:49:00",
+        "id" : 471901587,
+        "source" : "SMART",
+        "start_time" : "2025-09-30T05:42:00",
+        "local_date" : "2025-09-30",
+        "status" : "VALID",
+        "local_start_time" : "07:42:00"
+      },
+      {
+        "zone" : 3,
+        "end_time" : "2025-09-30T05:42:00",
+        "local_end_time" : "07:42:00",
+        "id" : 473326663,
+        "source" : "SMART",
+        "start_time" : "2025-09-30T05:30:00",
+        "local_date" : "2025-09-30",
+        "status" : "VALID",
+        "local_start_time" : "07:30:00"
+      },
+      {
+        "zone" : 1,
+        "end_time" : "2025-09-29T05:42:00",
+        "local_end_time" : "07:42:00",
+        "id" : 471548439,
+        "source" : "SMART",
+        "start_time" : "2025-09-29T05:37:00",
+        "local_date" : "2025-09-29",
+        "status" : "EXECUTED",
+        "local_start_time" : "07:37:00"
+      },
+      {
+        "zone" : 1,
+        "end_time" : "2025-09-29T05:37:00",
+        "local_end_time" : "07:37:00",
+        "id" : 471548438,
+        "source" : "SMART",
+        "start_time" : "2025-09-29T05:30:00",
+        "local_date" : "2025-09-29",
+        "status" : "EXECUTED",
+        "local_start_time" : "07:30:00"
+      }
+    ]
+  }
+}

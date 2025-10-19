@@ -1,0 +1,28 @@
+{
+  "status" : "OK",
+  "meta" : {
+    "token_reset" : "2025-09-30T00:00:00",
+    "time" : "2025-09-29T22:33:02",
+    "version" : "1.0",
+    "token_limit" : 2000,
+    "token_remaining" : 322,
+    "tid" : "1759185182_YIaM",
+    "last_active" : "2025-09-29T22:33:02"
+  },
+  "data" : {
+    "moistures" : [
+      {
+        "id" : 183230306,
+        "moisture" : 85,
+        "zone" : 1,
+        "date" : "2025-09-29"
+      },
+      {
+        "id" : 183230307,
+        "moisture" : 85,
+        "zone" : 2,
+        "date" : "2025-09-29"
+      }
+    ]
+  }
+}

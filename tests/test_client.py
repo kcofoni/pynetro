@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -17,6 +19,7 @@ from pynetro.client import (
     NetroInvalidDevice,
     NetroInvalidKey,
     NetroParameterError,
+    mask,
 )
 from pynetro.http import AsyncHTTPResponse
 
@@ -456,3 +459,135 @@ class TestNetroClient:
         assert exc_info.value.code == 3
         assert isinstance(exc_info.value.code, int)
         assert "Exceed limit" in exc_info.value.message
+
+    async def test_get_schedules_controller_success(
+        self, client: NetroClient, mock_http: MockHTTPClient, need_schedules_reference  # pylint: disable=W0613
+    ) -> None:
+        """Test get_schedules for a controller with date range and zones using reference JSON."""
+        test_key = "TESTKEY123"
+        expected_url = "https://api.netrohome.com/npa/v1/schedules.json"
+
+        # provide start/end dates and zones
+        start_date = "2025-09-29"
+        end_date = "2025-10-25"
+        zones = [1, 2, 3]
+
+        # Load reference response from tests/reference_data
+        ref_file = Path(__file__).parent / "reference_data" / "sprite_response_schedules.json"
+        if not ref_file.exists():
+            pytest.skip(f"Reference file missing: {ref_file}")
+        with ref_file.open(encoding="utf-8") as fh:
+            expected_response = json.load(fh)
+
+        # Configure mock response
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("GET", expected_url, mock_response)
+
+        # Act
+        result = await client.get_schedules(test_key, start_date=start_date, end_date=end_date, zones=zones)
+
+        # Assert - response equality and request parameters
+        assert result == expected_response
+        assert len(mock_http.get_calls) == 1
+        call = mock_http.get_calls[0]
+        assert call["url"] == expected_url
+
+        expected_params = {
+            "key": test_key,
+            "start_date": start_date,
+            "end_date": end_date,
+            "zones": json.dumps(list(zones)),
+        }
+        assert call["kwargs"]["params"] == expected_params
+        assert "headers" in call["kwargs"]
+        assert call["kwargs"]["headers"]["Accept"] == "application/json"
+
+        # Validate returned schedules structure (basic checks)
+        assert "data" in result
+        data = result["data"]
+        assert isinstance(data, dict)
+        assert "schedules" in data or any("schedule" in k for k in data.keys())
+        schedules = data.get("schedules", next((v for k, v in data.items() if "schedule" in k), []))
+        assert isinstance(schedules, list)
+        if schedules:
+            sample = schedules[0]
+            assert isinstance(sample, dict)
+            assert "zone" in sample or "id" in sample
+            assert any(k in sample for k in ("start_time", "local_start_time", "time"))
+
+    async def test_get_moistures_controller_success(
+        self, client: NetroClient, mock_http: MockHTTPClient, need_moistures_reference  # pylint: disable=W0613
+    ) -> None:
+        """Test get_moistures for a controller with date range and zones using reference JSON."""
+        test_key = "TESTKEY123"
+        expected_url = "https://api.netrohome.com/npa/v1/moistures.json"
+
+        # provide start/end dates and zones
+        start_date = "2025-09-29"
+        end_date = "2025-10-25"
+        zones = [1, 2, 3]
+
+        # Load reference response from tests/reference_data
+        ref_file = Path(__file__).parent / "reference_data" / "sprite_response_moistures.json"
+        if not ref_file.exists():
+            pytest.skip(f"Reference file missing: {ref_file}")
+        with ref_file.open(encoding="utf-8") as fh:
+            expected_response = json.load(fh)
+
+        # Configure mock response
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("GET", expected_url, mock_response)
+
+        # Act
+        result = await client.get_moistures(test_key, start_date=start_date, end_date=end_date, zones=zones)
+
+        # Assert - response equality and request parameters
+        assert result == expected_response
+        assert len(mock_http.get_calls) == 1
+        call = mock_http.get_calls[0]
+        assert call["url"] == expected_url
+
+        expected_params = {
+            "key": test_key,
+            "start_date": start_date,
+            "end_date": end_date,
+            "zones": json.dumps(list(zones)),
+        }
+        assert call["kwargs"]["params"] == expected_params
+        assert "headers" in call["kwargs"]
+        assert call["kwargs"]["headers"]["Accept"] == "application/json"
+
+        # Validate returned moistures structure (basic checks)
+        assert "data" in result
+        data = result["data"]
+        assert isinstance(data, dict)
+        moisture_key = "moistures" if "moistures" in data else next((k for k in data.keys() if "moist" in k), None)
+        assert moisture_key is not None, "Response should contain a moisture list (e.g. 'moistures')"
+
+        moistures = data.get(moisture_key, [])
+        assert isinstance(moistures, list)
+        if moistures:
+            sample = moistures[0]
+            assert isinstance(sample, dict)
+            # common expected fields in a moisture entry
+            assert "zone" in sample or "id" in sample
+            assert any(k in sample for k in ("moisture", "value", "time"))
+
+    def test_mask_long_string(self):
+        """Ensure mask preserves the first two and last two characters for strings longer than four."""
+        assert mask("ABCDEFGH") == "AB****GH"
+        assert mask("12345678") == "12****78"
+        # preserves first 2 and last 2 chars for strings longer than 4
+
+    @pytest.mark.parametrize(
+        "value,expected",
+        [
+            ("abcd", "****"),   # length == 4 -> masked
+            ("abc", "****"),    # length < 4 -> masked
+            ("", "****"),       # empty -> masked
+            (None, "****"),     # None -> masked (function treats falsy as masked)
+        ],
+    )
+    def test_mask_short_or_empty(self, value, expected):
+        """Test mask() behavior for short, empty or None inputs (should return '****')."""
+        assert mask(value) == expected

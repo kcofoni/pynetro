@@ -10,7 +10,6 @@ Provides NetroClient and related classes for interacting with Netro Home's NPA v
 from __future__ import annotations
 
 import json
-import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -25,8 +24,14 @@ NETRO_ERROR_CODE_INTERNAL_ERROR = 5
 NETRO_ERROR_CODE_PARAMETER_ERROR = 6
 
 def mask(s: str) -> str:
-    """Mask a key/serial in logs (keep first 2/last 2 characters)."""
-    return re.sub(r"(?<=..).*(?=..)", "****", s) if s and len(s) > 4 else "****"
+    """Mask a string: keep first 2 and last 2 chars; replace middle chars by '*' preserving original length.
+
+    For short/empty values (len <= 4 or falsy) return '****'.
+    """
+    if not s or len(s) <= 4:
+        return "****"
+    middle = "*" * (len(s) - 4)
+    return f"{s[:2]}{middle}{s[-2:]}"
 
 # ---------- Exceptions ----------
 class NetroException(Exception):
@@ -77,7 +82,7 @@ class NetroConfig:
     extra_headers : Optional[Mapping[str, str]]
         Additional headers to include in requests.
     """
-    base_url: str = None
+    base_url: str | None = None
     default_timeout: float = 10.0
     extra_headers: Mapping[str, str] | None = None
 

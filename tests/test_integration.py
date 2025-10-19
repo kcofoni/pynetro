@@ -60,19 +60,19 @@ class TestNetroClientIntegration:
         return NetroClient(real_http_client, config)
 
     @skip_if_no_serials
-    async def test_get_info_sensor_device(self, client: NetroClient) -> None:
+    async def test_get_info_sensor_device(self, client: NetroClient, need_sensor_reference) -> None:  #pylint: disable=W0613
         """Test get_info with Netro sensor device and validate against reference structure."""
         # Arrange - Sensor serial from environment
         sensor_key = NETRO_SENS_SERIAL
         if sensor_key is None:
             pytest.skip("NETRO_SENS_SERIAL environment variable not set")
 
-        # Load reference structure
+        # Load reference structure (must exist for this integration test)
         reference_file = Path(__file__).parent / "reference_data" / "sensor_response.json"
-        reference_data = None
-        if reference_file.exists():
-            with reference_file.open() as f:
-                reference_data = json.load(f)
+        if not reference_file.exists():
+            pytest.skip(f"Reference file missing: {reference_file}")
+        with reference_file.open() as f:
+            reference_data = json.load(f)
 
         # Act
         result = await client.get_info(sensor_key)
@@ -102,6 +102,7 @@ class TestNetroClientIntegration:
                 assert field in sensor_info, f"Missing expected field: {field}"
 
             # Validate sensor-specific fields
+            assert sensor_info["serial"] == reference_sensor["serial"]
             battery_level = sensor_info["battery_level"]
             assert isinstance(battery_level, (int, float)), "battery_level should be numeric"
             assert 0.0 <= battery_level <= 1.0, "battery_level should be between 0 and 1"
@@ -113,17 +114,17 @@ class TestNetroClientIntegration:
         print(f"Sensor info: {sensor_info}")
 
     @skip_if_no_serials
-    async def test_get_info_controller_device(self, client: NetroClient) -> None:
+    async def test_get_info_controller_device(self, client: NetroClient, need_controller_reference) -> None: # pylint: disable=W0613
         """Test get_info with Netro controller device and validate against reference structure."""
         # Arrange - Controller serial from environment
         controller_key = NETRO_CTRL_SERIAL
 
-        # Load reference structure
+        # Load reference structure (must exist for this integration test)
         reference_file = Path(__file__).parent / "reference_data" / "sprite_response.json"
-        reference_data = None
-        if reference_file.exists():
-            with reference_file.open() as f:
-                reference_data = json.load(f)
+        if not reference_file.exists():
+            pytest.skip(f"Reference file missing: {reference_file}")
+        with reference_file.open() as f:
+            reference_data = json.load(f)
 
         # Act
         if controller_key is None:
@@ -152,6 +153,7 @@ class TestNetroClientIntegration:
                 assert field in device_info, f"Missing expected field: {field}"
 
             # Validate controller-specific fields
+            assert device_info["serial"] == reference_device["serial"]
             assert "zone_num" in device_info, "Controller should have zone_num"
             assert "zones" in device_info, "Controller should have zones array"
             assert isinstance(device_info["zones"], list), "zones should be a list"
@@ -268,7 +270,7 @@ class TestNetroClientIntegration:
             print(f"Response with custom config: {result}")
 
     @skip_if_no_serials
-    async def test_get_schedules_controller_device(self, client: NetroClient) -> None:
+    async def test_get_schedules_controller_device(self, client: NetroClient, need_schedules_reference) -> None:  # pylint: disable=W0613
         """Test get_schedules with controller device and validate against reference structure."""
         # Arrange - Controller serial from environment and date range
         controller_key = NETRO_CTRL_SERIAL
@@ -277,12 +279,12 @@ class TestNetroClientIntegration:
         end_date = (today + timedelta(days=2)).strftime("%Y-%m-%d")
         zones = [1, 2]
 
-        # Load reference structure
+        # Load reference structure (must exist for this integration test)
         reference_file = Path(__file__).parent / "reference_data" / "sprite_response_schedules.json"
-        reference_data = None
-        if reference_file.exists():
-            with reference_file.open() as f:
-                reference_data = json.load(f)
+        if not reference_file.exists():
+            pytest.skip(f"Reference file missing: {reference_file}")
+        with reference_file.open() as f:
+            reference_data = json.load(f)
 
         # Act
         if controller_key is None:
@@ -359,6 +361,159 @@ class TestNetroClientIntegration:
         # Basic assertions
         assert isinstance(data, dict)
         assert "schedules" in data
+
+    @skip_if_no_serials
+    async def test_get_moistures_controller_device(self, client: NetroClient, need_moistures_reference) -> None:  # pylint: disable=W0613
+        """Test get_moistures with controller device and validate against reference structure."""
+        # Arrange - Controller serial from environment and optional date range
+        controller_key = NETRO_CTRL_SERIAL
+        today = datetime.now()
+        start_date = (today - timedelta(days=7)).strftime("%Y-%m-%d")
+        end_date = today.strftime("%Y-%m-%d")
+        zones = [1, 2]
+
+        # Load reference structure (must exist for this integration test)
+        reference_file = Path(__file__).parent / "reference_data" / "sprite_response_moistures.json"
+        if not reference_file.exists():
+            pytest.skip(f"Reference file missing: {reference_file}")
+        with reference_file.open() as f:
+            reference_data = json.load(f)
+
+        # Act
+        if controller_key is None:
+            pytest.skip("NETRO_CTRL_SERIAL environment variable not set")
+        result = await client.get_moistures(
+            controller_key, start_date=start_date, end_date=end_date, zones=zones
+        )
+
+        # Assert - Verify moistures response structure
+        assert isinstance(result, dict)
+        assert result["status"] == "OK"
+        assert "data" in result
+        assert "meta" in result
+
+        data = result["data"]
+        # Expecting a key that contains moisture entries; be permissive to accept either "moistures" or "data" subkeys
+        moisture_key = "moistures" if "moistures" in data else next((k for k in data.keys() if "moist" in k), None)
+        assert moisture_key is not None, "Response should contain a moisture list (e.g. 'moistures')"
+
+        moistures = data[moisture_key]
+        assert isinstance(moistures, list), "moistures should be a list"
+
+        # Validate against reference structure
+        print("🔍 Validating moistures against reference structure...")
+
+        if moistures:  # Only validate if we have actual records
+            reference_moistures = reference_data["data"].get(moisture_key, []) if "data" in reference_data else []
+            # Check required fields from reference (fallback to common keys)
+            sample_ref = reference_moistures[0] if reference_moistures else (moistures[0] if moistures else {})
+            required_fields = list(sample_ref.keys()) if isinstance(sample_ref, dict) else ["zone", "moisture", "time"]
+
+            for entry in moistures:
+                assert isinstance(entry, dict), "Each moisture entry should be a dict"
+                for field in required_fields:
+                    assert field in entry, f"Missing required field in moisture entry: {field}"
+
+                # Validate zone is integer and moisture is numeric
+                if "zone" in entry:
+                    assert isinstance(entry["zone"], int), "zone should be integer"
+                    if zones:
+                        assert isinstance(entry["zone"], int), "zone should be integer"
+                if "moisture" in entry:
+                    assert isinstance(entry["moisture"], (int, float)), "moisture should be numeric"
+
+            print(f"✅ Found {len(moistures)} moisture records")
+            print(f"✅ Date range: {start_date} to {end_date}")
+            print(f"✅ Requested zones: {zones}")
+            print("✅ Moisture structure validation successful against reference")
+        else:
+            print("Info: No moisture records found for the requested period")
+
+        print(f"Moistures response data keys: {list(data.keys())}")
+        print(f"Number of moisture records: {len(moistures)}")
+        if moistures:
+            print(f"Sample moisture entry keys: {list(moistures[0].keys())}")
+
+        # Basic assertions
+        assert isinstance(data, dict)
+        assert moisture_key in data
+
+    @skip_if_no_serials
+    async def test_get_events_controller_device(self, client: NetroClient, need_events_reference) -> None:  # pylint: disable=W0613
+        """Test get_events with controller device and validate against reference structure."""
+        # Arrange - Controller serial from environment and optional date range
+        controller_key = NETRO_CTRL_SERIAL
+        today = datetime.now()
+        start_date = (today - timedelta(days=30)).strftime("%Y-%m-%d")
+        end_date = today.strftime("%Y-%m-%d")
+
+        # Load reference structure (must exist for this integration test)
+        reference_file = Path(__file__).parent / "reference_data" / "sprite_response_events.json"
+        if not reference_file.exists():
+            pytest.skip(f"Reference file missing: {reference_file}")
+        with reference_file.open() as f:
+            reference_data = json.load(f)
+
+        # Act
+        if controller_key is None:
+            pytest.skip("NETRO_CTRL_SERIAL environment variable not set")
+        result = await client.get_events(controller_key, start_date=start_date, end_date=end_date)
+
+        # Assert - Verify events response structure
+        assert isinstance(result, dict)
+        assert result.get("status") == "OK"
+        assert "data" in result
+        assert "meta" in result
+
+        data = result["data"]
+        # Determine events list key (accept 'events' or any key containing 'event')
+        event_key = "events" if "events" in data else next((k for k in data.keys() if "event" in k), None)
+        assert event_key is not None, "Response should contain an events list (e.g. 'events')"
+
+        events = data[event_key]
+        assert isinstance(events, list), "events should be a list"
+
+        # Validate against reference structure if available
+        if reference_data:
+            print("🔍 Validating events against reference structure...")
+
+            if events:  # Only validate if we have actual records
+                reference_events = reference_data.get("data", {}).get(event_key, [])
+                sample_ref = reference_events[0] if reference_events else (events[0] if events else {})
+                required_fields = list(sample_ref.keys()) if isinstance(sample_ref, dict) else [
+                    "id",
+                    "zone",
+                    "start_time",
+                    "status",
+                ]
+
+                for entry in events:
+                    assert isinstance(entry, dict), "Each event entry should be a dict"
+                    for field in required_fields:
+                        assert field in entry, f"Missing required field in event entry: {field}"
+
+                    # Basic field type checks
+                    if "zone" in entry:
+                        assert isinstance(entry["zone"], int), "zone should be integer"
+                    if "start_time" in entry:
+                        assert isinstance(entry["start_time"], str), "start_time should be a string"
+
+                print(f"✅ Found {len(events)} event records")
+                print(f"✅ Date range: {start_date} to {end_date}")
+                print("✅ Event structure validation successful against reference")
+            else:
+                print("ℹ️ No event records found for the requested period")  # noqa: RUF001
+        else:
+            print("⚠️ No reference file found - basic validation only")
+
+        print(f"Events response data keys: {list(data.keys())}")
+        print(f"Number of event records: {len(events)}")
+        if events:
+            print(f"Sample event entry keys: {list(events[0].keys())}")
+
+        # Basic assertions
+        assert isinstance(data, dict)
+        assert event_key in data
 
 
 # Diagnostic tests to understand the API structure
