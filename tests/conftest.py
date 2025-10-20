@@ -2,7 +2,6 @@
 
 import os
 import shutil
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -74,27 +73,12 @@ def load_environment():
 REF_DIR = Path(__file__).parent / "reference_data"
 SCRIPT_PATH = Path(__file__).parent.parent / "scripts" / "generate_reference.py"
 
+def _generate_reference_file(template: Path, target: Path, serial: str) -> None:
+    """Generate a reference file from a template by simple token substitution.
 
-def _call_generate_script(template: Path, target: Path, serial: str) -> None:
-    """Call the project's generate_reference.py script if present.
-
-    If the script is available, it is invoked to generate the reference; otherwise a
-    simple placeholder replacement from the template into the target file is performed.
+    Replaces common dummy tokens inside the template with the provided serial and
+    writes the result to target. Does not call any external script.
     """
-    try:
-        if SCRIPT_PATH.exists():
-            subprocess.run(
-                ["python", str(SCRIPT_PATH), str(template), str(target), serial],
-                check=True,
-            )
-            print(f"Generated reference {target} using script {SCRIPT_PATH}")
-            return
-    except subprocess.CalledProcessError as exc:
-        # If the script fails, raise so pytest will report the issue
-        msg = f"Reference generation script failed: {exc}"
-        raise RuntimeError(msg) from exc
-
-    # Fallback: naive text replacement of common dummy tokens
     text = template.read_text(encoding="utf-8")
     replacements = {
         "DUMMY_SERIAL": serial,
@@ -103,8 +87,7 @@ def _call_generate_script(template: Path, target: Path, serial: str) -> None:
         "CTRL_SERIAL": serial,
     }
     for k, v in replacements.items():
-        if k in text:
-            text = text.replace(k, v)
+        text = text.replace(k, v)
     target.write_text(text, encoding="utf-8")
     print(f"Generated reference {target} by template substitution")
 
@@ -138,7 +121,7 @@ def ensure_reference(
             if not serial:
                 pytest.skip(f"Reference {ref_name} missing and environment {serial_env} not set")
             # Only generate if target missing (do not overwrite existing ref)
-            _call_generate_script(tpl, ref, serial)
+            _generate_reference_file(tpl, ref, serial)
             return
         # If we can copy template directly into reference (no serials inside)
         if copy_if_template:

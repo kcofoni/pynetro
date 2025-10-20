@@ -1,4 +1,4 @@
-"""Tests for NetroClient."""
+"""Tests for NetroClient."""  # pylint: disable=C0302
 
 from __future__ import annotations
 
@@ -573,6 +573,52 @@ class TestNetroClient:
             assert "zone" in sample or "id" in sample
             assert any(k in sample for k in ("moisture", "value", "time"))
 
+    async def test_get_events_with_filters(
+        self,
+        client: NetroClient,
+        mock_http: MockHTTPClient,
+        need_events_reference,  # ensure reference file exists (copied from template if needed)  # pylint: disable=W0613
+    ) -> None:
+        """GET events with event type and date range — use reference sprite_response_events.json."""
+        test_key = "TESTKEY-EVENTS"
+        expected_url = f"{client._base}/events.json"  # pylint: disable=W0212
+
+        # Load reference response
+        ref_file = Path(__file__).parent / "reference_data" / "sprite_response_events.json"
+        if not ref_file.exists():
+            pytest.skip(f"Reference file missing: {ref_file}")
+        with ref_file.open(encoding="utf-8") as fh:
+            expected_response = json.load(fh)
+
+        # Configure mock HTTP to return the reference
+        mock_response = MockHTTPResponse(status=200, json_data=expected_response)
+        mock_http.set_response("GET", expected_url, mock_response)
+
+        # Call with filters
+        event_type = 3
+        start_date = "2025-09-01"
+        end_date = "2025-10-31"
+        result = await client.get_events(test_key, event=event_type, start_date=start_date, end_date=end_date)
+
+        # Basic assertions
+        assert result == expected_response
+        assert getattr(mock_http, "get_calls", None) and len(mock_http.get_calls) == 1
+        call = mock_http.get_calls[0]
+        assert call["url"] == expected_url
+
+        expected_params = {"key": test_key, "event": int(event_type), "start_date": start_date, "end_date": end_date}
+        assert call["kwargs"]["params"] == expected_params
+        assert "headers" in call["kwargs"] and call["kwargs"]["headers"].get("Accept") == "application/json"
+        assert call["kwargs"]["timeout"] == client._cfg.default_timeout  # pylint: disable=W0212
+
+        # Verify events present in response
+        data = result.get("data", {})
+        events = data.get("events")
+        assert isinstance(events, list) and len(events) > 0, "expected at least one event in response"
+        # verify minimal shape for first item
+        first = events[0]
+        assert "id" in first and "event" in first and "time" in first and "message" in first
+
     def test_mask_long_string(self):
         """Ensure mask preserves the first two and last two characters for strings longer than four."""
         assert mask("ABCDEFGH") == "AB****GH"
@@ -1018,3 +1064,29 @@ class TestNetroClient:
         assert call["kwargs"]["json"] == {"key": test_key}
         assert call["kwargs"]["headers"].get("Content-Type") == "application/json"
         assert call["kwargs"]["timeout"] == client._cfg.default_timeout  # pylint: disable=W0212
+
+    def test_meta_helpers_from_response(self, client: NetroClient) -> None:
+        """Extract rate-limit info, transaction id and API version from response meta."""
+        response = {
+            "status": "OK",
+            "meta": {
+                "token_reset": "2025-10-20T00:00:00",
+                "time": "2025-10-19T22:42:55",
+                "version": "1.0",
+                "token_limit": 2000,
+                "token_remaining": 320,
+                "tid": "1760913775_IHhB",
+                "last_active": "2025-10-19T22:42:55",
+            },
+            "data": {},
+        }
+
+        rate = client.get_rate_limit_info(response)
+        assert rate == {
+            "token_limit": 2000,
+            "token_remaining": 320,
+            "token_reset": "2025-10-20T00:00:00",
+        }
+
+        assert client.get_transaction_id(response) == "1760913775_IHhB"
+        assert client.get_api_version(response) == "1.0"

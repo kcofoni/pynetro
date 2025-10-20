@@ -14,36 +14,22 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python 3.13.7
+    - name: Set up Python 3.11.2
       uses: actions/setup-python@v4
       with:
-        python-version: "3.13.7"
-
-    - name: Configure pip cache directory
-      run: echo "PIP_CACHE_DIR=${{ runner.temp }}/pip-cache" >> $GITHUB_ENV
-
-    - name: Cache pip
-      uses: actions/cache@v4
-      with:
-        path: ${{ env.PIP_CACHE_DIR }}
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml', '**/requirements*.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+        python-version: "3.11.2"
 
     - name: Install dependencies
-      env:
-        PIP_CACHE_DIR: ${{ env.PIP_CACHE_DIR }}
       run: |
         python -m pip install --upgrade pip
-        # installer les dépendances de test ; ajuste si tu as un fichier requirements
-        python -m pip install pytest pytest-asyncio pytest-cov coverage codecov
+        python -m pip install -r requirements-dev.txt
 
     - name: Set PYTHONPATH
       run: echo "PYTHONPATH=$(pwd)/src" >> $GITHUB_ENV
 
     - name: Run tests with coverage
       run: |
-        python -m pytest tests/test_client.py -v --cov=pynetro --cov-report=xml:coverage.xml
+        python -m pytest tests/test_client.py -v --cov=pynetro --cov-report=xml
         echo "=== Coverage Summary ==="
         python -m coverage report --show-missing
 

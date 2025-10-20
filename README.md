@@ -1,151 +1,127 @@
 # pynetro
 
-Async Python wrapper for Netro API — HTTP-agnostic (works with adapters).
-Designed to integrate with Home Assistant but usable anywhere.
+Async Python wrapper for the Netro API — HTTP-agnostic.
+
+[Netro Public API](https://www.netrohome.com/en/shop/articles/10)
 
 ## Installation
 
-### 🚀 Quick Installation
+### Quick install
 
 ```bash
-# Clone the project
 git clone https://github.com/kcofoni/pynetro.git
 cd pynetro
-
-# Install in development mode
 pip install -e .
 ```
 
-### 🛠️ Complete Development Setup
+### Development setup
 
-#### 1. Prerequisites
-- Python 3.10 or higher
-- git
-
-#### 2. Environment Setup
+1. Create and activate a virtual environment:
 
 ```bash
-# Clone the project
-git clone https://github.com/kcofoni/pynetro.git
-cd pynetro
-
-# Create a virtual environment
 python -m venv .venv
-
-# Activate the virtual environment
-# On Linux/macOS:
-source .venv/bin/activate
-
-# On Windows:
-# .venv\Scripts\activate
-
-# Verify the environment is activated (prompt should show (.venv))
-which python  # Should point to .venv/bin/python
+source .venv/bin/activate   # Linux / macOS
+# .venv\Scripts\activate    # Windows
 ```
 
-#### 3. Install Dependencies
+2. Install the package and dev dependencies:
 
 ```bash
-# Install the project in development mode
 pip install -e .
-
-# Install development dependencies (tests, linting, etc.)
 pip install -r requirements-dev.txt
 ```
 
-#### 4. Verify Installation
+3. Verify basic checks:
 
 ```bash
-# Run unit tests to verify everything works
+# run unit tests
 pytest tests/test_client.py -v
 
-# Check linting
+# lint
 ruff check src/ tests/
 ```
 
-### 🧪 Testing
+## Testing
 
-Run tests using pytest commands:
+This project provides two kinds of tests:
 
-#### 5. Integration Tests Configuration (optional)
+- Unit tests
+  - Fast, offline, no network required.
+  - Located mainly in `tests/test_client.py`.
+  - Run locally or in CI without environment variables.
 
-```bash
-# Create an .env file with your Netro device serial numbers
-cp .env.example .env
-# Then edit .env with your actual values
+- Integration tests
+  - Interact with the Netro API (or rely on prepared reference responses).
+  - Marked with `@pytest.mark.integration` in `tests/test_integration.py`.
+  - Require device serial numbers and/or reference files.
 
-# Generate reference files for development (contains real serial numbers, ignored by git)
-python tests/generate_references.py
-
-# Test integrations (requires internet connection and Netro devices)
-pytest tests/test_integration.py -v -m integration
-```
-
-**Security Note**: Reference files are automatically ignored by git as they contain real device serial numbers. Template files with anonymized data are provided for understanding the API structure.
-
-### 🔧 Common Troubleshooting
-
-#### Virtual environment not activated
-```bash
-# Check that the environment is activated
-which python  # Should point to .venv/bin/python
-echo $VIRTUAL_ENV  # Should display the path to .venv
-
-# If not activated:
-source .venv/bin/activate  # Linux/macOS
-# .venv\Scripts\activate   # Windows
-```
-
-#### Import errors during tests
-```bash
-# Reinstall the project in development mode
-pip install -e .
-```
-
-#### Integration tests skipped
-```bash
-# Integration tests require environment variables
-export NETRO_SENS_SERIAL="your_sensor_serial"
-export NETRO_CTRL_SERIAL="your_controller_serial"
-
-# Verify variables are set
-echo $NETRO_SENS_SERIAL $NETRO_CTRL_SERIAL
-```
-
-### Tests
-
-The project has a comprehensive test suite with 14 tests (7 unit + 7 integration).
+Running tests:
 
 ```bash
-# Run all tests
+# run all tests
 pytest tests/ -v
 
-# Unit tests only (always available)
+# unit tests only
 pytest tests/test_client.py -v
 
-# Integration tests (require environment variables)
-pytest tests/test_integration.py -v -m integration
+# integration tests (requires env vars / references)
+pytest tests/test_integration.py -m integration -v
 ```
 
-📚 **Complete testing documentation** → [tests/README.md](https://github.com/kcofoni/pynetro/blob/main/tests/README.md)
+### Reference files & templates
 
-## Security & Reference Files
+- Sensitive reference files that include real serials are NOT committed.
+- Committed templates live under `tests/reference_data/*_template.json`.
+- The test helpers in `tests/conftest.py` expose fixtures (e.g. `need_sensor_reference`, `need_controller_reference`, `need_sensor_data_reference`) that:
+  - If a reference file already exists, use it unchanged.
+  - If the reference is missing but a template exists:
+    - If a serial env var is provided (`NETRO_SENS_SERIAL` or `NETRO_CTRL_SERIAL`), the test helper generates the reference from the template by performing an internal token substitution (no external script). Common dummy tokens such as `DUMMY_SERIAL`, `000000000000`, `SENSOR_SERIAL` or `CTRL_SERIAL` are replaced by the provided serial.
+    - If the template contains no serials (pure fixtures), it will be copied to create the reference (`copy_if_template=True`).
+  - If neither reference nor template is available (or a required env var is unset), the fixture calls `pytest.skip()` so the integration test is skipped cleanly.
 
-For security reasons, files containing real device serial numbers are automatically ignored by git:
-- `tests/reference_data/sensor_response.json` 
-- `tests/reference_data/sprite_response.json`
+> Note: `generate_reference.py` is no longer used and has been removed — the generation is handled internally by `tests/conftest.py`.
 
-**What's available for fresh clones:**
-- ✅ Anonymized templates showing API structure (`*_template.json`)
-- ✅ Generation script to create real reference files when needed
-- ✅ All functionality works without these files - they're optional documentation
+Environment variables used by fixtures:
+- `NETRO_SENS_SERIAL` — sensor serial used to generate sensor reference
+- `NETRO_CTRL_SERIAL` — controller serial used to generate controller reference
 
-**If you need the real reference files:**
+Fixtures used in tests (examples):
+- `need_sensor_reference` — ensures `sensor_response.json`
+- `need_controller_reference` — ensures `sprite_response.json`
+- `need_sensor_data_reference` — ensures `sensor_response_data.json`
+- `need_schedules_reference`, `need_moistures_reference`, `need_events_reference` — ensure other refs (copy from templates if necessary)
+
+### .env.example and local .env
+
+A `.env.example` file (if present) documents the environment variables the tests may require. To provide values locally, copy it to `.env` and edit the values:
+
 ```bash
-# Set your device serial numbers
-export NETRO_SENS_SERIAL="your_sensor_serial" 
-export NETRO_CTRL_SERIAL="your_controller_serial"
-
-# Generate the files (will be ignored by git)
-python tests/generate_references.py
+cp .env.example .env
+# then open .env and fill NETRO_SENS_SERIAL / NETRO_CTRL_SERIAL etc.
 ```
+
+Notes:
+- `tests/conftest.py` attempts to load a `.env` file automatically (using `python-dotenv` if installed, otherwise a fallback). This allows running integration tests without exporting variables manually.
+- Do NOT commit your `.env` containing real serials or secrets. `.env` is ignored by the repo (`.gitignore`) by default.
+- In CI, either install `python-dotenv` or provide the required variables as repository Actions secrets / environment variables.
+
+## Security & gitignore
+
+- By default all `.json` files are ignored and only `*_template.json` are tracked. Keep real reference files out of the repository.
+- If a sensitive `.json` is already tracked, remove it from the index without deleting local copy:
+
+```bash
+git rm --cached path/to/file.json
+```
+
+## Troubleshooting
+
+- ImportError in CI for `dotenv`: ensure `python-dotenv` is installed in the job or make import optional in `tests/conftest.py`.
+- If integration tests are skipped, confirm `NETRO_SENS_SERIAL` and `NETRO_CTRL_SERIAL` are set or that reference templates exist.
+
+## Contributing
+
+- Add templates (`*_template.json`) for any reference data you add.
+- Do not commit files containing real serials or private tokens.
+
+For more details about tests and reference management see `tests/conftest.py` and the test files under `tests/`.
