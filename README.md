@@ -1,3 +1,9 @@
+![PyPI](https://img.shields.io/pypi/v/pynetro)
+[![CI](https://github.com/kcofoni/pynetro/workflows/CI/badge.svg)](https://github.com/kcofoni/pynetro/actions)
+[![codecov](https://codecov.io/gh/kcofoni/pynetro/branch/main/graph/badge.svg)](https://codecov.io/gh/kcofoni/pynetro)
+![GitHub repo size](https://img.shields.io/github/repo-size/kcofoni/pynetro) ![GitHub](https://img.shields.io/github/license/kcofoni/pynetro)
+
+
 # pynetro
 
 Async Python wrapper for the Netro API — HTTP-agnostic.
